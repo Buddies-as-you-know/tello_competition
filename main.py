@@ -75,12 +75,12 @@ def ninesplit(image):
     c = [image[x0*x:x0*(x+1), y0*y:y0*(y+1)] for x in range(n) for y in range(n)]
     p = []
     for i, img in enumerate(c):
-        p.append(img)
+        p.append(sum(sum(img)))
     img_x = np.vstack((np.hstack(p[0:3]),
                    np.hstack(p[3:6]),
                    np.hstack(p[6:9])
                   ))
-    print(img_x.shape)
+    print(img_x)
     return img_x
 
 # メイン関数
@@ -88,7 +88,6 @@ def main():
     # 初期化部
     # Telloクラスを使って，tellというインスタンス(実体)を作る
     tello = Tello(retry_count=1)    # 応答が来ないときのリトライ回数は1(デフォルトは3)
-    tello_state = 0                 #telloの操作状態
     tello.RESPONSE_TIMEOUT = 0.01   # コマンド応答のタイムアウトは短くした(デフォルトは7)
 
     # Telloへ接続
@@ -128,7 +127,7 @@ def main():
             mask, mask_img = detect_red_color(small_image)
             
             cv2.imshow('OpenCV Window', mask)    # ウィンドウに表示するイメージを変えれば色々表示できる
-            #nineimg     =    ninesplit(mask)
+            nineimg     =    ninesplit(mask)
             #print(np.argmax(nineimg))
             """
             if np.argmax(nineimg)==0:
@@ -159,15 +158,53 @@ def main():
                 cv2.imwrite('./image/'+str(np.argmax(nineimg))+'/'+str(i8)+'.jpg', mask)
                 i8 += 1
             """
-            
             # (Y) OpenCVウィンドウでキー入力を1ms待つ
-            if tello_state == 0:
+            key = cv2.waitKey(1) & 0xFF
+            if key == 27:                   # key が27(ESC)だったらwhileループを脱出，プログラム終了
+                break
+            elif key == ord('t'):           # 離陸
                 tello.takeoff()
-                tello_state = 1
-            elif tello_state == 1:
+            elif key == ord('l'):           # 着陸
                 tello.land()
-            
-                
+            elif key == ord('w'):           # 前進 30cm
+                tello.move_forward(30)
+            elif key == ord('s'):           # 後進 30cm
+                tello.move_back(30)
+            elif key == ord('a'):           # 左移動 30cm
+                tello.move_left(30)
+            elif key == ord('d'):           # 右移動 30cm
+                tello.move_right(30)
+            elif key == ord('e'):           # 旋回-時計回り 30度
+                tello.rotate_clockwise(30)
+            elif key == ord('q'):           # 旋回-反時計回り 30度
+                tello.rotate_counter_clockwise(30)
+            elif key == ord('r'):           # 上昇 30cm
+                tello.move_up(30)
+            elif key == ord('f'):           # 下降 30cm
+                tello.move_down(30)
+            elif key == ord('p'):           # ステータスをprintする
+                print(tello.get_current_state())
+            elif key == ord('m'):           # モータ始動/停止を切り替え
+                if motor_on == False:       # 停止中なら始動 
+                    tello.turn_motor_on()
+                    motor_on = True
+                else:                       # 回転中なら停止
+                    tello.turn_motor_off()
+                    motor_on = False
+            elif key == ord('c'):           # カメラの前方/下方の切り替え
+                if camera_dir == Tello.CAMERA_FORWARD:     # 前方なら下方へ変更
+                    tello.set_video_direction(Tello.CAMERA_DOWNWARD)
+                    camera_dir = Tello.CAMERA_DOWNWARD     # フラグ変更
+                else:                                      # 下方なら前方へ変更
+                    tello.set_video_direction(Tello.CAMERA_FORWARD)
+                    camera_dir = Tello.CAMERA_FORWARD      # フラグ変更
+                time.sleep(0.5)     # 映像が切り替わるまで少し待つ
+
+            # (Z) 10秒おきに'command'を送って、死活チェックを通す
+            current_time = time.time()                          # 現在時刻を取得
+            if current_time - pre_time > 10.0 :                 # 前回時刻から10秒以上経過しているか？
+                tello.send_command_without_return('command')    # 'command'送信
+                pre_time = current_time                         # 前回時刻を更新
 
     except( KeyboardInterrupt, SystemExit):    # Ctrl+cが押されたらループ脱出
         print( "Ctrl+c を検知" )
