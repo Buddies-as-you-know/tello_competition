@@ -28,7 +28,7 @@ while 1
     D = conn.fromRedis('image');
     I = rgb2bgr(uint8(D));
     % 情報の取得
-    J = conn.fromRedis('state');
+    J = conn.fromRedis('state'); 
     tof = J{'tof'}.int64;
     s = strcat('Battery:', int2str(J{'bat'}.int64), ', ToF:', int2str(J{'tof'}.int64), ', Roll:', int2str(J{'roll'}.int64), ', Pitch:', int2str(J{'pitch'}.int64), ', Yaw:', int2str(J{'yaw'}.int64));
     position =  [1 50];
