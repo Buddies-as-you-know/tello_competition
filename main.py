@@ -67,6 +67,7 @@ def detect_blue_color(img):
     masked_img = cv2.bitwise_and(img, img, mask=mask)
  
     return mask, masked_img
+    
 def ninesplit(image):
     h, w = image.shape[:2]
     n = 3  # 画像分割数
