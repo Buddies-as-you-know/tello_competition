@@ -31,7 +31,7 @@ def main():
     auto_mode = 0
 
     # tello stateフラグ
-    tello_state = -1
+    tello_state = 'init'
 
     time.sleep(0.5)     # 通信が安定するまでちょっと待つ
 
@@ -51,29 +51,27 @@ def main():
                 small_image = cv2.rotate(small_image, cv2.ROTATE_90_CLOCKWISE)      # 90度回転して、画像の上を前方にする
 
             # (X)自律
-            if tello_state == 0:            # 離陸
+            if tello_state == 'takeoff':            # 離陸
                 tello.takeoff()
-                print("tello_state(0):takeoff")
                 tello_state = 1
 
             elif tello_state == 1:          #窓侵入
-                print("tello_state(1):窓侵入")
                 if flag == 1:
                     tello_state = 2
                     flag = 0
 
             elif tello_state == 2:          #室内捜索（部屋の3Dマッピング, 消化器や人の検知）
-                print("tello_state(2):室内捜索")
                 tello_state = 3
 
             elif tello_state == 3:          #ライントレース
-                print("tello_state(3):ライントレース")
                 tello_state = 4
 
             elif tello_state == 4:         # 着陸
                 tello.send_rc_control( 0, 0, 0, 0 )
                 tello.land()
-                print("tello_state(4):land")
+
+            #現在のtelloの状態を表示
+            print(f'tello state:{tello_state}')
 
             # (Y) ウィンドウに表示
             cv2.imshow('OpenCV Window', result_image)    # ウィンドウに表示するイメージを変えれば色々表示できる
