@@ -6,8 +6,6 @@ import time  # time.sleepを使いたいので
 import cv2  # OpenCVを使うため
 import numpy as np
 from djitellopy import Tello  # DJITelloPyのTelloクラスをインポート
-from facenet_pytorch import MTCNN, InceptionResnetV1
-from PIL import Image
 
 
 def detect_red_color(img):
@@ -67,6 +65,8 @@ def detect_blue_color(img):
     masked_img = cv2.bitwise_and(img, img, mask=mask)
  
     return mask, masked_img
+
+
 def ninesplit(image):
     h, w = image.shape[:2]
     n = 3  # 画像分割数
@@ -145,10 +145,11 @@ def main():
                     elif left_right == "left":
                         tello.move_right(width)
                         left_right = "right"
-                        width += 5      
-                elif colore_intensity == 300:
+                        width += 5 
+                elif colore_intensity <= 300:
                     tello.move_forward(20)
-                if  window_potision[0] == 0:
+                    
+                if window_potision[0] == 0:
                     tello.move_left(20)
                 elif window_potision[0] == 2:
                     tello.move_right(20)
