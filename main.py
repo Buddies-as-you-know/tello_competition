@@ -13,65 +13,66 @@ from PIL import Image
 def detect_red_color(img):
     # HSV色空間に変換
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
- 
+
     # 赤色のHSVの値域1
     hsv_min = np.array([0, 200, 77])
     hsv_max = np.array([10, 255, 255])
     mask1 = cv2.inRange(hsv, hsv_min, hsv_max)
- 
+
     # 赤色のHSVの値域2
     hsv_min = np.array([230, 200, 77])
     hsv_max = np.array([255, 255, 255])
     mask2 = cv2.inRange(hsv, hsv_min, hsv_max)
- 
+
     # 赤色領域のマスク（255：赤色、0：赤色以外）
     mask = mask1 + mask2
- 
+
     # マスキング処理
     masked_img = cv2.bitwise_and(img, img, mask=mask)
- 
+
     return mask, masked_img
- 
- 
+
+
 # 緑色の検出
 def detect_green_color(img):
     # HSV色空間に変換
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
- 
+
     # 緑色のHSVの値域1
     hsv_min = np.array([30, 64, 0])
     hsv_max = np.array([90, 255, 255])
- 
+
     # 緑色領域のマスク（255：赤色、0：赤色以外）
     mask = cv2.inRange(hsv, hsv_min, hsv_max)
- 
+
     # マスキング処理
     masked_img = cv2.bitwise_and(img, img, mask=mask)
- 
+
     return mask, masked_img
- 
- 
+
+
 # 青色の検出
 def detect_blue_color(img):
     # HSV色空間に変換
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
- 
+
     # 青色のHSVの値域1
     hsv_min = np.array([90, 64, 0])
     hsv_max = np.array([150, 255, 255])
- 
+
     # 青色領域のマスク（255：赤色、0：赤色以外）
     mask = cv2.inRange(hsv, hsv_min, hsv_max)
- 
+
     # マスキング処理
     masked_img = cv2.bitwise_and(img, img, mask=mask)
- 
+
     return mask, masked_img
+    
 def ninesplit(image):
     h, w = image.shape[:2]
     n = 3  # 画像分割数
     y0 = int(h/n)
-    x0 = int(w/n) 
+    x0 = int(w/n)
     c = [image[x0*x:x0*(x+1), y0*y:y0*(y+1)] for x in range(n) for y in range(n)]
     p = []
     for i, img in enumerate(c):
@@ -113,7 +114,7 @@ def main():
         while True:
 
             # (A) 画像取得
-            
+
             image = frame_read.frame    # 映像を1フレーム取得しimage変数に格納
 
             # (B) 画像サイズ変更と、カメラ方向による回転
@@ -126,7 +127,7 @@ def main():
 
             # (X) ウィンドウに表示
             mask, mask_img = detect_red_color(small_image)
-            
+
             cv2.imshow('OpenCV Window', mask)    # ウィンドウに表示するイメージを変えれば色々表示できる
             #nineimg     =    ninesplit(mask)
             #print(np.argmax(nineimg))
@@ -151,7 +152,7 @@ def main():
                 i5 += 1
             elif np.argmax(nineimg)==6:
                 cv2.imwrite('./image/'+str(np.argmax(nineimg))+'/'+str(i6)+'.jpg', mask)
-                i6 += 1 
+                i6 += 1
             elif np.argmax(nineimg)==1:
                 cv2.imwrite('./image/'+str(np.argmax(nineimg))+'/'+str(i7)+'.jpg', mask)
                 i7 += 1
@@ -159,15 +160,15 @@ def main():
                 cv2.imwrite('./image/'+str(np.argmax(nineimg))+'/'+str(i8)+'.jpg', mask)
                 i8 += 1
             """
-            
+
             # (Y) OpenCVウィンドウでキー入力を1ms待つ
             if tello_state == 0:
                 tello.takeoff()
                 tello_state = 1
             elif tello_state == 1:
                 tello.land()
-            
-                
+
+
 
     except( KeyboardInterrupt, SystemExit):    # Ctrl+cが押されたらループ脱出
         print( "Ctrl+c を検知" )
@@ -178,7 +179,7 @@ def main():
     tello.streamoff()                                   # 画像転送を終了(熱暴走防止)
     frame_read.stop()                                   # 画像受信スレッドを止める
 
-    del tello.background_frame_read                    # フレーム受信のインスタンスを削除    
+    del tello.background_frame_read                    # フレーム受信のインスタンスを削除
     del tello                                           # telloインスタンスを削除
 
 # "python3 main_core.py"として実行された時だけ動く様にするおまじない処理
