@@ -7,20 +7,20 @@ import cv2                      # OpenCVを使うため
 import numpy as np              # ラベリングにNumPyが必要なので
 
 #認識したい色を設定(R=赤, B=青, G=緑)
-color_code = 'B'
+color_code = 'R'
 
 #color code(R=赤, B=青, G=緑)を受け取りそのhsvそれぞれのminとmaxを返す
 def hsv_color(c_code):
 
     if c_code == 'R':
-        hsv_min = [0, 125, 50]
-        hsv_max = [15, 255, 255]
+        hsv_min = (0, 200, 77)
+        hsv_max = (15, 255, 255)
     elif c_code == 'B':
-        hsv_min = [83, 0, 30]
-        hsv_max = [140, 255, 255]
+        hsv_min = (83, 0, 30)
+        hsv_max = (140, 255, 255)
     elif c_code == 'G':
-        hsv_min = [50, 100, 70]
-        hsv_max = [77, 255, 115]
+        hsv_min = (50, 100, 70)
+        hsv_max = (77, 255, 115)
 
     return hsv_min, hsv_max
 
@@ -51,6 +51,10 @@ def main():
     # 自動モードフラグ
     auto_mode = 0
 
+    # 安定性フラグ
+    stable = 0
+    b_stable = 0
+
     time.sleep(0.5)     # 通信が安定するまでちょっと待つ
 
     # ループ部
@@ -76,16 +80,8 @@ def main():
             #認識する色のhsvを取得（デフォルトは赤）
             hsv_min, hsv_max = hsv_color(color_code)
 
-            # hsvのmin, max値を取る
-            h_min = hsv_min[0]
-            h_max = hsv_max[0]
-            s_min = hsv_min[1]
-            s_max = hsv_max[1]
-            v_min = hsv_min[2]
-            v_max = hsv_max[2]
-
             # inRange関数で範囲指定２値化
-            bin_image = cv2.inRange(hsv_image, (h_min, s_min, v_min), (h_max, s_max, v_max)) # HSV画像なのでタプルもHSV並び
+            bin_image = cv2.inRange(hsv_image, hsv_min, hsv_max)        # HSV画像なのでタプルもHSV並び
             kernel = np.ones((15,15),np.uint8)  # 15x15で膨張させる
             bin_image = cv2.dilate(bin_image,kernel,iterations = 1)    # 膨張してラベルを一つにする
 
@@ -115,8 +111,6 @@ def main():
                 my = int(center[max_index][1])
                 #print("(x,y)=%d,%d (w,h)=%d,%d s=%d (mx,my)=%d,%d"%(x, y, w, h, s, mx, my) )
 
-                #print(f'Color area = {s}')
-
                 # ラベルを囲うバウンディングボックスを描画
                 cv2.rectangle(result_image, (x, y), (x+w, y+h), (255, 0, 255))
 
@@ -124,6 +118,7 @@ def main():
                 cv2.putText(result_image, "%d,%d"%(mx,my), (x-15, y+h+15), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 0))
                 cv2.putText(result_image, "%d"%(s), (x, y+h+30), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 0))
 
+                #侵入位置移動モード
                 if auto_mode == 1:
                     # a:左右
                     # b:前後
@@ -131,19 +126,59 @@ def main():
                     # d:旋回
                     a = b = c = d = 0
 
-                    ##########  前後  ##########
+                    ##########  左右  ##########
                     # 制御式
-                    bx = 0.003 * (50000 - s)
+                    ax = 0.3 * (240 - mx)
 
-                    # 前後移動の不感帯を設定
-                    b = 0.0 if abs(bx) < 9.0 else bx   # ±3000未満ならゼロにする
+                    # 左右移動の不感帯を設定
+                    a = 0.0 if abs(ax) < 10.0 else ax   # ±30未満ならゼロにする
 
-                    # 前後移動のソフトウェアリミッタ(±100を超えないように)
-                    b =  100 if b >  100.0 else b
-                    b = -100 if b < -100.0 else b
+                    # 左右移動のソフトウェアリミッタ(±20を超えないように)
+                    a =  20 if a >  20.0 else a
+                    a = -20 if a < -20.0 else a
 
-                    print(f'b={b}')
+                    #マーカーに近づくとブレが大きくなるためリミッタを狭める
+                    if stable > 200:
+                        a =  10 if a >  10.0 else a
+                        a = -10 if a < -10.0 else a
 
+                    a = -a   # 左右方向が逆だったので符号を反転
+                    #print('ax=%f'%(ax) )
+
+                    ##########  前後  ##########
+                    if stable > 200:                       #マーカーを中心に捉えていたら前に移動
+                        #stable = 0                         #移動してもマーカーを中心に捉えるようにする
+                        # 制御式
+                        bx = 0.003 * (30000 - s)           #期待する面積→45000
+
+                        # 前後移動の不感帯を設定
+                        b = 0.0 if abs(bx) < 9.0 else bx   # 面積差が±3000未満ならゼロにする
+
+                        # 前後移動のソフトウェアリミッタ(±10を超えないように)
+                        b =  10 if b >  10.0 else b
+                        b = -10 if b < -10.0 else b
+
+                        #print(f'b={b}')
+
+                    ##########  上下  ##########
+                    # 制御式
+                    cx = 0.3 * (180 - my)
+
+                    # 上下移動の不感帯を設定
+                    c = 0.0 if abs(cx) < 10.0 else cx   # ±30未満ならゼロにする
+
+                    # 上下移動のソフトウェアリミッタ(±20を超えないように)
+                    c =  20 if c >  20.0 else c
+                    c = -20 if c < -20.0 else c
+
+                    #マーカーに近づくとブレが大きくなるためリミッタを狭める
+                    if stable > 200:
+                        c =  10 if c >  10.0 else c
+                        c = -10 if c < -10.0 else c
+
+                    #print('cx=%f'%(cx) )
+
+                    """
                     ##########  旋回(ターゲットを画面の中央に捉える機能)  ##########
                     # 制御式(ゲインは低めの0.3)
                     dx = 0.4 * (240 - mx)       # 画面中心との差分
@@ -156,13 +191,35 @@ def main():
                     d = -100 if d < -100.0 else d
 
                     d = -d   # 旋回方向が逆だったので符号を反転
-
                     print('dx=%f'%(dx) )
+                    """
+
+                    #マーカーを中心に捉えていたら安定ポイント+1
+                    if (a == 0 and c == 0):
+                        stable += 1
+
+                    #窓に侵入できる位置に安定していたらb安定ポイント+1
+                    if (stable > 200 and b == 0):
+                        b_stable += 1
+
+                    #窓に侵入できる位置まで来たら侵入モードに移行
+                    if b_stable > 50:
+                        auto_mode = 2
+
+                    print(f'stable = {stable}, b_stable = {b_stable}')
                     tello.send_rc_control( int(a), int(b), int(c), int(d) )
+
+            #窓侵入モード
+            if auto_mode == 2:
+                tello.move_up(30)
+                tello.move_forward(50)
+                print(f'===== auto_mode({auto_mode}) is done =====')
+                auto_mode = 0
+
 
             # (X) ウィンドウに表示
             cv2.imshow('OpenCV Window', result_image)    # ウィンドウに表示するイメージを変えれば色々表示できる
-            cv2.imshow('Binary Image', bin_image)
+            #cv2.imshow('Binary Image', bin_image)
             cv2.imshow('defo Image', small_image)
 
             # (Y) OpenCVウィンドウでキー入力を1ms待つ
@@ -212,6 +269,11 @@ def main():
             elif key == ord('0'):
                 tello.send_rc_control( 0, 0, 0, 0 )
                 auto_mode = 0                    # 追跡モードOFF
+            elif key == ord('2'):
+                tello.send_rc_control( 0, 50, 30, 0 )
+            elif key == ord('3'):
+                tello.move_up(30)
+                tello.move_forward(50)
 
             # (Z) 10秒おきに'command'を送って、死活チェックを通す
             current_time = time.time()                          # 現在時刻を取得
