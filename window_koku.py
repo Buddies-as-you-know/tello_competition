@@ -6,6 +6,24 @@ import time                     # time.sleepを使いたいので
 import cv2                      # OpenCVを使うため
 import numpy as np              # ラベリングにNumPyが必要なので
 
+#認識したい色を設定(R=赤, B=青, G=緑)
+color_code = 'B'
+
+#color code(R=赤, B=青, G=緑)を受け取りそのhsvそれぞれのminとmaxを返す
+def hsv_color(c_code):
+
+    if c_code == 'R':
+        hsv_min = [0, 125, 50]
+        hsv_max = [15, 255, 255]
+    elif c_code == 'B':
+        hsv_min = [83, 0, 30]
+        hsv_max = [140, 255, 255]
+    elif c_code == 'G':
+        hsv_min = [50, 100, 70]
+        hsv_max = [77, 255, 115]
+
+    return hsv_min, hsv_max
+
 # メイン関数
 def main():
     # 初期化部
@@ -30,18 +48,6 @@ def main():
     # トラックバーを作るため，まず最初にウィンドウを生成
     cv2.namedWindow("OpenCV Window")
 
-    # トラックバーのコールバック関数は何もしない空の関数
-    def nothing(x):
-        pass        # passは何もしないという命令
-
-    # トラックバーの生成
-    cv2.createTrackbar("H_min", "OpenCV Window", 0, 179, nothing)       # Hueの最大値は179
-    cv2.createTrackbar("H_max", "OpenCV Window", 15, 179, nothing)
-    cv2.createTrackbar("S_min", "OpenCV Window", 115, 255, nothing)
-    cv2.createTrackbar("S_max", "OpenCV Window", 255, 255, nothing)
-    cv2.createTrackbar("V_min", "OpenCV Window", 28, 255, nothing)
-    cv2.createTrackbar("V_max", "OpenCV Window", 255, 255, nothing)
-
     # 自動モードフラグ
     auto_mode = 0
 
@@ -63,25 +69,25 @@ def main():
                 small_image = cv2.rotate(small_image, cv2.ROTATE_90_CLOCKWISE)      # 90度回転して、画像の上を前方にする
 
             # (C) ここから画像処理
-            bgr_image = small_image[250:359,0:479]              # 注目する領域(ROI)を(0,250)-(479,359)で切り取る
+            #bgr_image = small_image[250:359,0:479]              # 注目する領域(ROI)を(0,250)-(479,359)で切り取る
+            bgr_image = small_image                              # 窓を認識するまで広い視野で確認する
             hsv_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2HSV)  # BGR画像 -> HSV画像
 
-            # トラックバーの値を取る
-            h_min = cv2.getTrackbarPos("H_min", "OpenCV Window")
-            h_max = cv2.getTrackbarPos("H_max", "OpenCV Window")
-            s_min = cv2.getTrackbarPos("S_min", "OpenCV Window")
-            s_max = cv2.getTrackbarPos("S_max", "OpenCV Window")
-            v_min = cv2.getTrackbarPos("V_min", "OpenCV Window")
-            v_max = cv2.getTrackbarPos("V_max", "OpenCV Window")
+            #認識する色のhsvを取得（デフォルトは赤）
+            hsv_min, hsv_max = hsv_color(color_code)
 
-            print(type(h_min))
-
-            print(f'h_min={h_min}, h_max={h_max}, s_min={s_min}, s_max={s_max}, v_min_{v_min}, v_max={v_max}')
+            # hsvのmin, max値を取る
+            h_min = hsv_min[0]
+            h_max = hsv_max[0]
+            s_min = hsv_min[1]
+            s_max = hsv_max[1]
+            v_min = hsv_min[2]
+            v_max = hsv_max[2]
 
             # inRange関数で範囲指定２値化
             bin_image = cv2.inRange(hsv_image, (h_min, s_min, v_min), (h_max, s_max, v_max)) # HSV画像なのでタプルもHSV並び
             kernel = np.ones((15,15),np.uint8)  # 15x15で膨張させる
-            bin_image = cv2.dilate(bin_image,kernel,iterations = 1)    # 膨張して虎ロープをつなげる
+            bin_image = cv2.dilate(bin_image,kernel,iterations = 1)    # 膨張してラベルを一つにする
 
             # bitwise_andで元画像にマスクをかける -> マスクされた部分の色だけ残る
             result_image = cv2.bitwise_and(hsv_image, hsv_image, mask=bin_image)   # HSV画像 AND HSV画像 なので，自分自身とのANDは何も変化しない->マスクだけ効かせる
@@ -109,6 +115,8 @@ def main():
                 my = int(center[max_index][1])
                 #print("(x,y)=%d,%d (w,h)=%d,%d s=%d (mx,my)=%d,%d"%(x, y, w, h, s, mx, my) )
 
+                #print(f'Color area = {s}')
+
                 # ラベルを囲うバウンディングボックスを描画
                 cv2.rectangle(result_image, (x, y), (x+w, y+h), (255, 0, 255))
 
@@ -117,9 +125,26 @@ def main():
                 cv2.putText(result_image, "%d"%(s), (x, y+h+30), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 0))
 
                 if auto_mode == 1:
+                    # a:左右
+                    # b:前後
+                    # c:上下
+                    # d:旋回
                     a = b = c = d = 0
-                    b=30
 
+                    ##########  前後  ##########
+                    # 制御式
+                    bx = 0.003 * (50000 - s)
+
+                    # 前後移動の不感帯を設定
+                    b = 0.0 if abs(bx) < 9.0 else bx   # ±3000未満ならゼロにする
+
+                    # 前後移動のソフトウェアリミッタ(±100を超えないように)
+                    b =  100 if b >  100.0 else b
+                    b = -100 if b < -100.0 else b
+
+                    print(f'b={b}')
+
+                    ##########  旋回(ターゲットを画面の中央に捉える機能)  ##########
                     # 制御式(ゲインは低めの0.3)
                     dx = 0.4 * (240 - mx)       # 画面中心との差分
 
@@ -138,6 +163,7 @@ def main():
             # (X) ウィンドウに表示
             cv2.imshow('OpenCV Window', result_image)    # ウィンドウに表示するイメージを変えれば色々表示できる
             cv2.imshow('Binary Image', bin_image)
+            cv2.imshow('defo Image', small_image)
 
             # (Y) OpenCVウィンドウでキー入力を1ms待つ
             key = cv2.waitKey(1) & 0xFF
