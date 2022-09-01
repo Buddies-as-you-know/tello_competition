@@ -55,7 +55,7 @@ def main():
             if camera_dir == Tello.CAMERA_DOWNWARD:     # 下向きカメラは画像の向きが90度ずれている
                 small_image = cv2.rotate(small_image, cv2.ROTATE_90_CLOCKWISE)      # 90度回転して、画像の上を前方にする
 
-            # (C) ここから画像処理
+            # (C) 自律モード
 
             #窓侵入
             if auto_mode == 'window':

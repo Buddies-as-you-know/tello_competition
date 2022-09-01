@@ -26,8 +26,7 @@ tello = Tello(retry_count=1)
 ###############################################################
 
 def linetrace(small_image, auto_mode=None, color_code='R'):
-
-    # (C) ここから画像処理
+    
     bgr_image = small_image[250:359,0:479]              # 注目する領域(ROI)を(0,250)-(479,359)で切り取る
     hsv_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2HSV)  # BGR画像 -> HSV画像
 
@@ -92,7 +91,8 @@ def linetrace(small_image, auto_mode=None, color_code='R'):
             tello.send_rc_control( int(a), int(b), int(c), int(d) )
 
         #############################################################
-        #ライントレースが完了したことを確認してmodeを次に移動する機能を追加する
+        #ライントレースが完了したことを確認して（丸まったロープを検知したい）
+        #                               modeを次に移動する機能を追加する
         #############################################################
 
     return result_image, auto_mode
