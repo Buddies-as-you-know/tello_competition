@@ -27,9 +27,6 @@ tello = Tello(retry_count=1)
 
 def linetrace(small_image, auto_mode=None, color_code='R'):
 
-    if not auto_mode == 'linetrace':
-        pass
-
     # (C) ここから画像処理
     bgr_image = small_image[250:359,0:479]              # 注目する領域(ROI)を(0,250)-(479,359)で切り取る
     hsv_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2HSV)  # BGR画像 -> HSV画像
@@ -94,7 +91,9 @@ def linetrace(small_image, auto_mode=None, color_code='R'):
             print('dx=%f'%(dx) )
             tello.send_rc_control( int(a), int(b), int(c), int(d) )
 
+        #############################################################
         #ライントレースが完了したことを確認してmodeを次に移動する機能を追加する
+        #############################################################
 
     return result_image, auto_mode
 
@@ -197,7 +196,7 @@ def main():
                     camera_dir = Tello.CAMERA_FORWARD      # フラグ変更
                 time.sleep(0.5)     # 映像が切り替わるまで少し待つ
             elif key == ord('1'):
-                auto_mode = 'window'                    # 追跡モードON
+                auto_mode = 'linetrace'                    # 追跡モードON
             elif key == ord('0'):
                 tello.send_rc_control( 0, 0, 0, 0 )
                 auto_mode = 'manual'                    # 追跡モードOFF

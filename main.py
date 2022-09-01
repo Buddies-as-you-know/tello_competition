@@ -118,6 +118,7 @@ def main():
 
             #自律モード
             elif key == ord('1'):
+                #離陸してからマーカーを探す機能が必要（マーカーをは発見できたら窓侵入に移行）
                 tello.takeoff()
                 time.sleep(3)     # 映像が切り替わるまで少し待つ
                 auto_mode = 'window'                    # 追跡モードON
