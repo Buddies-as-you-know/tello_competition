@@ -75,8 +75,6 @@ def main():
             v_min = cv2.getTrackbarPos("V_min", "OpenCV Window")
             v_max = cv2.getTrackbarPos("V_max", "OpenCV Window")
 
-            print(type(h_min))
-
             print(f'h_min={h_min}, h_max={h_max}, s_min={s_min}, s_max={s_max}, v_min_{v_min}, v_max={v_max}')
 
             # inRange関数で範囲指定２値化

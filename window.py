@@ -6,12 +6,12 @@ import time                     # time.sleepを使いたいので
 import cv2                      # OpenCVを使うため
 import numpy as np              # ラベリングにNumPyが必要なので
 
-from hsvColor import hsv_color
+from hsvColor import hsv_color  #設定された色を取得するため
 
 # Telloクラスを使って，tellというインスタンス(実体)を作る
 tello = Tello(retry_count=1)
 
-#####################   linetrace()   ##########################
+#####################   window()   ############################
 #
 #   引数
 #   small_image:    telloが取得したオリジナル画像（size 480*360）
@@ -20,18 +20,20 @@ tello = Tello(retry_count=1)
 #
 #   戻り値
 #   result_image:   画像処理後の画像
-#   auto_mode:      telloの現在の状態（完了したら状態は'land'
+#   auto_mode:      telloの現在の状態（完了したら状態は'room'
 #                                    になります)
 #
 ###############################################################
 
-def linetrace(small_image, auto_mode=None, color_code='R'):
+# 安定性フラグ
+stable = 0          #上下、左右について安定性を維持している時間（フレーム数)
+b_stable = 0        #マーカーとの距離について安定性を維持している時間（フレーム数)
 
-    if not auto_mode == 'linetrace':
-        pass
+def window(small_image, auto_mode=None, color_code='R'):
 
-    # (C) ここから画像処理
-    bgr_image = small_image[250:359,0:479]              # 注目する領域(ROI)を(0,250)-(479,359)で切り取る
+    global stable, b_stable
+
+    bgr_image = small_image                              # 窓を認識するまで広い視野で確認する
     hsv_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2HSV)  # BGR画像 -> HSV画像
 
     #認識する色のhsvを取得（デフォルトは赤）
@@ -40,7 +42,7 @@ def linetrace(small_image, auto_mode=None, color_code='R'):
     # inRange関数で範囲指定２値化
     bin_image = cv2.inRange(hsv_image, hsv_min, hsv_max)        # HSV画像なのでタプルもHSV並び
     kernel = np.ones((15,15),np.uint8)  # 15x15で膨張させる
-    bin_image = cv2.dilate(bin_image,kernel,iterations = 1)    # 膨張して虎ロープをつなげる
+    bin_image = cv2.dilate(bin_image,kernel,iterations = 1)    # 膨張してラベルを一つにする
 
     # bitwise_andで元画像にマスクをかける -> マスクされた部分の色だけ残る
     result_image = cv2.bitwise_and(hsv_image, hsv_image, mask=bin_image)   # HSV画像 AND HSV画像 なので，自分自身とのANDは何も変化しない->マスクだけ効かせる
@@ -75,10 +77,68 @@ def linetrace(small_image, auto_mode=None, color_code='R'):
         cv2.putText(result_image, "%d,%d"%(mx,my), (x-15, y+h+15), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 0))
         cv2.putText(result_image, "%d"%(s), (x, y+h+30), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 0))
 
-        if auto_mode == 'linetrace':
+        #侵入位置移動モード
+        if auto_mode == 'window':
+            # a:左右
+            # b:前後
+            # c:上下
+            # d:旋回
             a = b = c = d = 0
-            b=30
 
+            ##########  左右  ##########
+            # 制御式
+            ax = 0.3 * (240 - mx)
+
+            # 左右移動の不感帯を設定
+            a = 0.0 if abs(ax) < 10.0 else ax   # ±30未満ならゼロにする
+
+            # 左右移動のソフトウェアリミッタ(±20を超えないように)
+            a =  20 if a >  20.0 else a
+            a = -20 if a < -20.0 else a
+
+            #マーカーに近づくとブレが大きくなるためリミッタを狭める
+            if stable > 200:
+                a =  10 if a >  10.0 else a
+                a = -10 if a < -10.0 else a
+
+            a = -a   # 左右方向が逆だったので符号を反転
+            #print('ax=%f'%(ax) )
+
+            ##########  前後  ##########
+            if stable > 200:                       #マーカーを中心に捉えていたら前に移動
+                #stable = 0                         #移動してもマーカーを中心に捉えるようにする
+                # 制御式
+                bx = 0.003 * (30000 - s)           #期待する面積→45000
+
+                # 前後移動の不感帯を設定
+                b = 0.0 if abs(bx) < 9.0 else bx   # 面積差が±3000未満ならゼロにする
+
+                # 前後移動のソフトウェアリミッタ(±10を超えないように)
+                b =  10 if b >  10.0 else b
+                b = -10 if b < -10.0 else b
+
+                #print(f'b={b}')
+
+            ##########  上下  ##########
+            # 制御式
+            cx = 0.3 * (180 - my)
+
+            # 上下移動の不感帯を設定
+            c = 0.0 if abs(cx) < 10.0 else cx   # ±30未満ならゼロにする
+
+            # 上下移動のソフトウェアリミッタ(±20を超えないように)
+            c =  20 if c >  20.0 else c
+            c = -20 if c < -20.0 else c
+
+            #マーカーに近づくとブレが大きくなるためリミッタを狭める
+            if stable > 200:
+                c =  10 if c >  10.0 else c
+                c = -10 if c < -10.0 else c
+
+            #print('cx=%f'%(cx) )
+
+            """
+            ##########  旋回(ターゲットを画面の中央に捉える機能)  ##########
             # 制御式(ゲインは低めの0.3)
             dx = 0.4 * (240 - mx)       # 画面中心との差分
 
@@ -90,11 +150,31 @@ def linetrace(small_image, auto_mode=None, color_code='R'):
             d = -100 if d < -100.0 else d
 
             d = -d   # 旋回方向が逆だったので符号を反転
-
             print('dx=%f'%(dx) )
+            """
+
+            #マーカーを中心に捉えていたら安定ポイント+1
+            if (a == 0 and c == 0):
+                stable += 1
+
+            #窓に侵入できる位置に安定していたらb安定ポイント+1
+            if (stable > 200 and b == 0):
+                b_stable += 1
+
+            #窓に侵入できる位置まで来たら侵入モードに移行
+            if b_stable > 50:
+                auto_mode = 'invasion'
+
+            print(f'stable = {stable}, b_stable = {b_stable}')
             tello.send_rc_control( int(a), int(b), int(c), int(d) )
 
-        #ライントレースが完了したことを確認してmodeを次に移動する機能を追加する
+    #窓侵入モード
+    if auto_mode == 'invasion':
+        tello.move_up(30)
+        time.sleep(3)
+        tello.move_forward(100)
+        print(f'===== auto_mode({auto_mode}) done =====')
+        auto_mode = 'room'
 
     return result_image, auto_mode
 
@@ -143,10 +223,10 @@ def main():
 
             # (C) ここから画像処理
 
-            #ライントレース
-            result_image, auto_mode = linetrace(small_image, auto_mode, color_code)
-            if auto_mode == 'land':
-                print("======== Done Linetrace =======")
+            #窓侵入
+            result_image, auto_mode = window(small_image, auto_mode, color_code)
+            if auto_mode == 'room':
+                print("======== Done Window =======")
                 auto_mode = 'manual'
 
             # (X) ウィンドウに表示

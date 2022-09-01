@@ -212,7 +212,8 @@ def main():
             #窓侵入モード
             if auto_mode == 2:
                 tello.move_up(30)
-                tello.move_forward(50)
+                time.sleep(3)
+                tello.move_forward(100)
                 print(f'===== auto_mode({auto_mode}) is done =====')
                 auto_mode = 0
 
@@ -269,11 +270,6 @@ def main():
             elif key == ord('0'):
                 tello.send_rc_control( 0, 0, 0, 0 )
                 auto_mode = 0                    # 追跡モードOFF
-            elif key == ord('2'):
-                tello.send_rc_control( 0, 50, 30, 0 )
-            elif key == ord('3'):
-                tello.move_up(30)
-                tello.move_forward(50)
 
             # (Z) 10秒おきに'command'を送って、死活チェックを通す
             current_time = time.time()                          # 現在時刻を取得

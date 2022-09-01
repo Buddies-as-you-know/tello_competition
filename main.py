@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-q
 
 from djitellopy import Tello    # DJITelloPyのTelloクラスをインポート
 import time                     # time.sleepを使いたいので
 import cv2                      # OpenCVを使うため
 import numpy as np              # ラベリングにNumPyが必要なので
+
+from window import window       #窓侵入関数
+
+#認識したい色を設定(R=赤, B=青, G=緑)
+color_code = 'R'
 
 # メイン関数
 def main():
@@ -27,11 +32,11 @@ def main():
     motor_on = False                    # モータON/OFFのフラグ
     camera_dir = Tello.CAMERA_FORWARD   # 前方/下方カメラの方向のフラグ
 
-    # 自動モードフラグ
-    auto_mode = 0
+    # トラックバーを作るため，まず最初にウィンドウを生成
+    cv2.namedWindow("OpenCV Window")
 
-    # tello stateフラグ
-    tello_state = 'init'
+    # 自動モードフラグ
+    auto_mode = 'manual'
 
     time.sleep(0.5)     # 通信が安定するまでちょっと待つ
 
@@ -50,32 +55,75 @@ def main():
             if camera_dir == Tello.CAMERA_DOWNWARD:     # 下向きカメラは画像の向きが90度ずれている
                 small_image = cv2.rotate(small_image, cv2.ROTATE_90_CLOCKWISE)      # 90度回転して、画像の上を前方にする
 
-            # (X)自律
-            if tello_state == 'takeoff':            # 離陸
-                tello.takeoff()
-                tello_state = 1
+            # (C) ここから画像処理
 
-            elif tello_state == 1:          #窓侵入
-                if flag == 1:
-                    tello_state = 2
-                    flag = 0
+            #窓侵入
+            if auto_mode == 'window':
+                result_image, auto_mode = window(small_image, auto_mode, color_code)
+                if auto_mode == 'room':
+                    print("======== Done Window =======")
+                    auto_mode = 'manual'
 
-            elif tello_state == 2:          #室内捜索（部屋の3Dマッピング, 消化器や人の検知）
-                tello_state = 3
+            #ライントレース
+            elif auto_mode == 'linetrace':
+                result_image, auto_mode = window(small_image, auto_mode, color_code)
 
-            elif tello_state == 3:          #ライントレース
-                tello_state = 4
+            # (X) ウィンドウに表示
+            cv2.imshow('OpenCV Window', result_image)    # ウィンドウに表示するイメージを変えれば色々表示できる
+            #cv2.imshow('Binary Image', bin_image)
+            cv2.imshow('defo Image', small_image)
 
-            elif tello_state == 4:         # 着陸
+            # (Y) OpenCVウィンドウでキー入力を1ms待つ
+            key = cv2.waitKey(1) & 0xFF
+            if key == 27:                   # key が27(ESC)だったらwhileループを脱出，プログラム終了
+                break
+            #elif key == ord('t'):           # 離陸
+            #    tello.takeoff()
+            elif key == ord('l'):           # 着陸
                 tello.send_rc_control( 0, 0, 0, 0 )
                 tello.land()
+            elif key == ord('w'):           # 前進 30cm
+                tello.move_forward(30)
+            elif key == ord('s'):           # 後進 30cm
+                tello.move_back(30)
+            elif key == ord('a'):           # 左移動 30cm
+                tello.move_left(30)
+            elif key == ord('d'):           # 右移動 30cm
+                tello.move_right(30)
+            elif key == ord('e'):           # 旋回-時計回り 30度
+                tello.rotate_clockwise(30)
+            elif key == ord('q'):           # 旋回-反時計回り 30度
+                tello.rotate_counter_clockwise(30)
+            elif key == ord('r'):           # 上昇 30cm
+                tello.move_up(30)
+            elif key == ord('f'):           # 下降 30cm
+                tello.move_down(30)
+            elif key == ord('p'):           # ステータスをprintする
+                print(tello.get_current_state())
+            elif key == ord('m'):           # モータ始動/停止を切り替え
+                if motor_on == False:       # 停止中なら始動
+                    tello.turn_motor_on()
+                    motor_on = True
+                else:                       # 回転中なら停止
+                    tello.turn_motor_off()
+                    motor_on = False
+            elif key == ord('c'):           # カメラの前方/下方の切り替え
+                if camera_dir == Tello.CAMERA_FORWARD:     # 前方なら下方へ変更
+                    tello.set_video_direction(Tello.CAMERA_DOWNWARD)
+                    camera_dir = Tello.CAMERA_DOWNWARD     # フラグ変更
+                else:                                      # 下方なら前方へ変更
+                    tello.set_video_direction(Tello.CAMERA_FORWARD)
+                    camera_dir = Tello.CAMERA_FORWARD      # フラグ変更
+                time.sleep(0.5)     # 映像が切り替わるまで少し待つ
 
-            #現在のtelloの状態を表示
-            print(f'tello state:{tello_state}')
-
-            # (Y) ウィンドウに表示
-            cv2.imshow('OpenCV Window', result_image)    # ウィンドウに表示するイメージを変えれば色々表示できる
-            cv2.imshow('Binary Image', bin_image)
+            #自律モード
+            elif key == ord('1'):
+                tello.takeoff()
+                time.sleep(3)     # 映像が切り替わるまで少し待つ
+                auto_mode = 'window'                    # 追跡モードON
+            elif key == ord('0'):
+                tello.send_rc_control( 0, 0, 0, 0 )
+                auto_mode = 'manual'                    # 追跡モードOFF
 
             # (Z) 10秒おきに'command'を送って、死活チェックを通す
             current_time = time.time()                          # 現在時刻を取得

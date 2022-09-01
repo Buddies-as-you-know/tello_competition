@@ -6,98 +6,12 @@ import time                     # time.sleepを使いたいので
 import cv2                      # OpenCVを使うため
 import numpy as np              # ラベリングにNumPyが必要なので
 
-from hsvColor import hsv_color
+from window import window       #窓侵入関数
 
-# Telloクラスを使って，tellというインスタンス(実体)を作る
-tello = Tello(retry_count=1)
+#認識したい色を設定(R=赤, B=青, G=緑)
+color_code = 'R'
 
-#####################   linetrace()   ##########################
-#
-#   引数
-#   small_image:    telloが取得したオリジナル画像（size 480*360）
-#   auto_mode:      telloの現在の状態
-#   color_code:     認識したい色(R=赤, B=青, G=緑)
-#
-#   戻り値
-#   result_image:   画像処理後の画像
-#   auto_mode:      telloの現在の状態（完了したら状態は'land'
-#                                    になります)
-#
-###############################################################
-
-def linetrace(small_image, auto_mode=None, color_code='R'):
-
-    if not auto_mode == 'linetrace':
-        pass
-
-    # (C) ここから画像処理
-    bgr_image = small_image[250:359,0:479]              # 注目する領域(ROI)を(0,250)-(479,359)で切り取る
-    hsv_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2HSV)  # BGR画像 -> HSV画像
-
-    #認識する色のhsvを取得（デフォルトは赤）
-    hsv_min, hsv_max = hsv_color(color_code)
-
-    # inRange関数で範囲指定２値化
-    bin_image = cv2.inRange(hsv_image, hsv_min, hsv_max)        # HSV画像なのでタプルもHSV並び
-    kernel = np.ones((15,15),np.uint8)  # 15x15で膨張させる
-    bin_image = cv2.dilate(bin_image,kernel,iterations = 1)    # 膨張して虎ロープをつなげる
-
-    # bitwise_andで元画像にマスクをかける -> マスクされた部分の色だけ残る
-    result_image = cv2.bitwise_and(hsv_image, hsv_image, mask=bin_image)   # HSV画像 AND HSV画像 なので，自分自身とのANDは何も変化しない->マスクだけ効かせる
-
-    # 面積・重心計算付きのラベリング処理を行う
-    num_labels, label_image, stats, center = cv2.connectedComponentsWithStats(bin_image)
-
-    # 最大のラベルは画面全体を覆う黒なので不要．データを削除
-    num_labels = num_labels - 1
-    stats = np.delete(stats, 0, 0)
-    center = np.delete(center, 0, 0)
-
-    if num_labels >= 1:
-        # 面積最大のインデックスを取得
-        max_index = np.argmax(stats[:,4])
-        #print max_index
-
-        # 面積最大のラベルのx,y,w,h,面積s,重心位置mx,myを得る
-        x = stats[max_index][0]
-        y = stats[max_index][1]
-        w = stats[max_index][2]
-        h = stats[max_index][3]
-        s = stats[max_index][4]
-        mx = int(center[max_index][0])
-        my = int(center[max_index][1])
-        #print("(x,y)=%d,%d (w,h)=%d,%d s=%d (mx,my)=%d,%d"%(x, y, w, h, s, mx, my) )
-
-        # ラベルを囲うバウンディングボックスを描画
-        cv2.rectangle(result_image, (x, y), (x+w, y+h), (255, 0, 255))
-
-        # 重心位置の座標と面積を表示
-        cv2.putText(result_image, "%d,%d"%(mx,my), (x-15, y+h+15), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 0))
-        cv2.putText(result_image, "%d"%(s), (x, y+h+30), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 0))
-
-        if auto_mode == 'linetrace':
-            a = b = c = d = 0
-            b=30
-
-            # 制御式(ゲインは低めの0.3)
-            dx = 0.4 * (240 - mx)       # 画面中心との差分
-
-            # 旋回方向の不感帯を設定
-            d = 0.0 if abs(dx) < 10.0 else dx   # ±50未満ならゼロにする
-
-            # 旋回方向のソフトウェアリミッタ(±100を超えないように)
-            d =  100 if d >  100.0 else d
-            d = -100 if d < -100.0 else d
-
-            d = -d   # 旋回方向が逆だったので符号を反転
-
-            print('dx=%f'%(dx) )
-            tello.send_rc_control( int(a), int(b), int(c), int(d) )
-
-        #ライントレースが完了したことを確認してmodeを次に移動する機能を追加する
-
-    return result_image, auto_mode
-
+# メイン関数
 def main():
     # 初期化部
     # Telloクラスを使って，tellというインスタンス(実体)を作る
@@ -143,11 +57,11 @@ def main():
 
             # (C) ここから画像処理
 
-            #ライントレース
-            result_image, auto_mode = linetrace(small_image, auto_mode, color_code)
-            if auto_mode == 'land':
-                print("======== Done Linetrace =======")
-                auto_mode = 'manual'
+            #窓侵入
+            result_image, auto_mode = window(small_image, auto_mode, color_code)
+            if auto_mode == 'room':
+                print("======== Done Window =======")
+                auto_mode = 0
 
             # (X) ウィンドウに表示
             cv2.imshow('OpenCV Window', result_image)    # ウィンドウに表示するイメージを変えれば色々表示できる
@@ -221,8 +135,7 @@ def main():
     del tello.background_frame_read                    # フレーム受信のインスタンスを削除
     del tello                                           # telloインスタンスを削除
 
+
 # "python3 main_linetrace.py"として実行された時だけ動く様にするおまじない処理
 if __name__ == "__main__":      # importされると__name_に"__main__"は入らないので，pyファイルが実行されたのかimportされたのかを判断できる．
-    #認識したい色を設定(R=赤, B=青, G=緑)
-    color_code = 'R'
     main()    # メイン関数を実行
