@@ -57,16 +57,23 @@ def main():
 
             # (C) 自律モード
 
+            #離陸と窓マーカー探知
+            if auto_mode == 'takeoff':
+                result_image, auto_mode = takeoff(small_image, auto_mode, color_code)
+                if auto_mode == 'window':
+                    print("======== Done takeoff =======")
+
             #窓侵入
-            if auto_mode == 'window':
+            elif auto_mode == 'window':
                 result_image, auto_mode = window(small_image, auto_mode, color_code)
                 if auto_mode == 'room':
                     print("======== Done Window =======")
-                    auto_mode = 'manual'
 
             #ライントレース
             elif auto_mode == 'linetrace':
-                result_image, auto_mode = window(small_image, auto_mode, color_code)
+                result_image, auto_mode = linetrace(small_image, auto_mode, color_code)
+                if auto_mode == 'land':
+                    print("======== Done linetrace =======")
 
             # (X) ウィンドウに表示
             cv2.imshow('OpenCV Window', result_image)    # ウィンドウに表示するイメージを変えれば色々表示できる
@@ -118,10 +125,9 @@ def main():
 
             #自律モード
             elif key == ord('1'):
-                #離陸してからマーカーを探す機能が必要（マーカーをは発見できたら窓侵入に移行）
                 tello.takeoff()
                 time.sleep(3)     # 映像が切り替わるまで少し待つ
-                auto_mode = 'window'                    # 追跡モードON
+                auto_mode = 'takeoff'                    # 追跡モードON
             elif key == ord('0'):
                 tello.send_rc_control( 0, 0, 0, 0 )
                 auto_mode = 'manual'                    # 追跡モードOFF

@@ -6,12 +6,12 @@ import time                     # time.sleepを使いたいので
 import cv2                      # OpenCVを使うため
 import numpy as np              # ラベリングにNumPyが必要なので
 
-from hsvColor import hsv_color
+from hsvColor import hsv_color  #設定された色を取得するため
 
 # Telloクラスを使って，tellというインスタンス(実体)を作る
 tello = Tello(retry_count=1)
 
-#####################   linetrace()   ##########################
+#####################   takeoff()   ############################
 #
 #   引数
 #   small_image:    telloが取得したオリジナル画像（size 480*360）
@@ -20,14 +20,18 @@ tello = Tello(retry_count=1)
 #
 #   戻り値
 #   result_image:   画像処理後の画像
-#   auto_mode:      telloの現在の状態（完了したら状態は'land'
+#   auto_mode:      telloの現在の状態（完了したら状態は'window'
 #                                    になります)
 #
 ###############################################################
 
-def linetrace(small_image, auto_mode=None, color_code='R'):
+marker_flag = 0
 
-    bgr_image = small_image[250:359,0:479]              # 注目する領域(ROI)を(0,250)-(479,359)で切り取る
+def takeoff(small_image, auto_mode=None, color_code='R'):
+
+    global marker_flag
+
+    bgr_image = small_image                              # 窓を認識するまで広い視野で確認する
     hsv_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2HSV)  # BGR画像 -> HSV画像
 
     #認識する色のhsvを取得（デフォルトは赤）
@@ -36,7 +40,7 @@ def linetrace(small_image, auto_mode=None, color_code='R'):
     # inRange関数で範囲指定２値化
     bin_image = cv2.inRange(hsv_image, hsv_min, hsv_max)        # HSV画像なのでタプルもHSV並び
     kernel = np.ones((15,15),np.uint8)  # 15x15で膨張させる
-    bin_image = cv2.dilate(bin_image,kernel,iterations = 1)    # 膨張して虎ロープをつなげる
+    bin_image = cv2.dilate(bin_image,kernel,iterations = 1)    # 膨張してラベルを一つにする
 
     # bitwise_andで元画像にマスクをかける -> マスクされた部分の色だけ残る
     result_image = cv2.bitwise_and(hsv_image, hsv_image, mask=bin_image)   # HSV画像 AND HSV画像 なので，自分自身とのANDは何も変化しない->マスクだけ効かせる
@@ -49,53 +53,31 @@ def linetrace(small_image, auto_mode=None, color_code='R'):
     stats = np.delete(stats, 0, 0)
     center = np.delete(center, 0, 0)
 
-    if num_labels >= 1:
-        # 面積最大のインデックスを取得
-        max_index = np.argmax(stats[:,4])
-        #print max_index
+    #　初めからマーカーを捉えてたら終了
+    if num_labels >= 1 and marker_flag == 0:
+        auto_mode = 'window'
 
-        # 面積最大のラベルのx,y,w,h,面積s,重心位置mx,myを得る
-        x = stats[max_index][0]
-        y = stats[max_index][1]
-        w = stats[max_index][2]
-        h = stats[max_index][3]
-        s = stats[max_index][4]
-        mx = int(center[max_index][0])
-        my = int(center[max_index][1])
-        #print("(x,y)=%d,%d (w,h)=%d,%d s=%d (mx,my)=%d,%d"%(x, y, w, h, s, mx, my) )
+    # マーカーを捉えていなかったら時計回りに旋回
+    if num_labels < 1 and marker_flag == 0:
+        tello.rotate_clockwise(30)
+        marker_flag = 1
 
-        # ラベルを囲うバウンディングボックスを描画
-        cv2.rectangle(result_image, (x, y), (x+w, y+h), (255, 0, 255))
+    #右旋回した後、マーカーがあったら旋回を戻して右に100cm移動
+    if num_labels >= 1 and marker_flag == 1:
+        tello.rotate_counter_clockwise(30)
+        time.sleep(3)
+        tello.move_right(100)
+        auto_mode = 'window'
 
-        # 重心位置の座標と面積を表示
-        cv2.putText(result_image, "%d,%d"%(mx,my), (x-15, y+h+15), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 0))
-        cv2.putText(result_image, "%d"%(s), (x, y+h+30), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 0))
-
-        if auto_mode == 'linetrace':
-            a = b = c = d = 0
-            b=30
-
-            # 制御式(ゲインは低めの0.3)
-            dx = 0.4 * (240 - mx)       # 画面中心との差分
-
-            # 旋回方向の不感帯を設定
-            d = 0.0 if abs(dx) < 10.0 else dx   # ±50未満ならゼロにする
-
-            # 旋回方向のソフトウェアリミッタ(±100を超えないように)
-            d =  100 if d >  100.0 else d
-            d = -100 if d < -100.0 else d
-
-            d = -d   # 旋回方向が逆だったので符号を反転
-
-            print('dx=%f'%(dx) )
-            tello.send_rc_control( int(a), int(b), int(c), int(d) )
-
-        #############################################################
-        #ライントレースが完了したことを確認して（丸まったロープを検知したい）
-        #                               modeを次に移行する機能を追加する
-        #############################################################
+    # 旋回後もマーカーを捉えていなかったら左にあるため旋回を戻して左に100cm移動
+    if num_labels < 1 and marker_flag == 1:
+        tello.rotate_counter_clockwise(30)
+        time.sleep(3)
+        tello.move_left(100)
+        auto_mode = 'window'
 
     return result_image, auto_mode
+
 
 def main():
     # 初期化部
@@ -140,10 +122,12 @@ def main():
             if camera_dir == Tello.CAMERA_DOWNWARD:     # 下向きカメラは画像の向きが90度ずれている
                 small_image = cv2.rotate(small_image, cv2.ROTATE_90_CLOCKWISE)      # 90度回転して、画像の上を前方にする
 
-            #ライントレース
-            result_image, auto_mode = linetrace(small_image, auto_mode, color_code)
-            if auto_mode == 'land':
-                print("======== Done Linetrace =======")
+            # (C) ここから画像処理
+
+            #マーカーサーチ
+            result_image, auto_mode = takeoff(small_image, auto_mode, color_code)
+            if auto_mode == 'winodw':
+                print("======== Done takeoff =======")
                 auto_mode = 'manual'
 
             # (X) ウィンドウに表示
@@ -155,8 +139,8 @@ def main():
             key = cv2.waitKey(1) & 0xFF
             if key == 27:                   # key が27(ESC)だったらwhileループを脱出，プログラム終了
                 break
-            elif key == ord('t'):           # 離陸
-                tello.takeoff()
+            # elif key == ord('t'):           # 離陸
+            #     tello.takeoff()
             elif key == ord('l'):           # 着陸
                 tello.send_rc_control( 0, 0, 0, 0 )
                 tello.land()
@@ -194,7 +178,8 @@ def main():
                     camera_dir = Tello.CAMERA_FORWARD      # フラグ変更
                 time.sleep(0.5)     # 映像が切り替わるまで少し待つ
             elif key == ord('1'):
-                auto_mode = 'linetrace'                    # 追跡モードON
+                tello.takeoff()
+                auto_mode = 'takeoff'                    # 追跡モードON
             elif key == ord('0'):
                 tello.send_rc_control( 0, 0, 0, 0 )
                 auto_mode = 'manual'                    # 追跡モードOFF
