@@ -26,10 +26,11 @@ tello = Tello(retry_count=1)
 ###############################################################
 
 marker_flag = 0
+count = 0
 
 def takeoff(small_image, auto_mode=None, color_code='R'):
 
-    global marker_flag
+    global marker_flag, count
 
     bgr_image = small_image                              # 窓を認識するまで広い視野で確認する
     hsv_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2HSV)  # BGR画像 -> HSV画像
@@ -52,6 +53,10 @@ def takeoff(small_image, auto_mode=None, color_code='R'):
     num_labels = num_labels - 1
     stats = np.delete(stats, 0, 0)
     center = np.delete(center, 0, 0)
+
+    print(f'num_labels = {num_labels}, marker_flag = {marker_flag}')
+
+    count += 1
 
     #　初めからマーカーを捉えてたら終了
     if num_labels >= 1 and marker_flag == 0:
@@ -179,6 +184,9 @@ def main():
                 time.sleep(0.5)     # 映像が切り替わるまで少し待つ
             elif key == ord('1'):
                 tello.takeoff()
+                time.sleep(3)
+                tello.move_forward(100)
+                time.sleep(3)
                 auto_mode = 'takeoff'                    # 追跡モードON
             elif key == ord('0'):
                 tello.send_rc_control( 0, 0, 0, 0 )

@@ -11,23 +11,8 @@ from hsvColor import hsv_color
 # Telloクラスを使って，tellというインスタンス(実体)を作る
 tello = Tello(retry_count=1)
 
-#####################   linetrace()   ##########################
-#
-#   引数
-#   small_image:    telloが取得したオリジナル画像（size 480*360）
-#   auto_mode:      telloの現在の状態
-#   color_code:     認識したい色(R=赤, B=青, G=緑)
-#
-#   戻り値
-#   result_image:   画像処理後の画像
-#   auto_mode:      telloの現在の状態（完了したら状態は'land'
-#                                    になります)
-#
-###############################################################
+def labeling(bgr_image, color_code='R'):
 
-def linetrace(small_image, auto_mode=None, color_code='R'):
-
-    bgr_image = small_image[250:359,0:479]              # 注目する領域(ROI)を(0,250)-(479,359)で切り取る
     hsv_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2HSV)  # BGR画像 -> HSV画像
 
     #認識する色のhsvを取得（デフォルトは赤）
@@ -49,7 +34,41 @@ def linetrace(small_image, auto_mode=None, color_code='R'):
     stats = np.delete(stats, 0, 0)
     center = np.delete(center, 0, 0)
 
+    return result_image, num_labels, label_image, stats, center
+
+#####################   linetrace()   ##########################
+#
+#   引数
+#   small_image:    telloが取得したオリジナル画像（size 480*360）
+#   auto_mode:      telloの現在の状態
+#   color_code:     認識したい色(R=赤, B=青, G=緑)
+#
+#   戻り値
+#   result_image:   画像処理後の画像
+#   auto_mode:      telloの現在の状態（完了したら状態は'land'
+#                                    になります)
+#
+###############################################################
+
+#終点かどうかのフラグ
+traceing = 0
+terminus = 0
+
+def linetrace(small_image, auto_mode=None, color_code='R'):
+
+    global terminus, traceing
+
+    result_image, num_labels, label_image, stats, center = labeling(small_image[250:359,0:479], color_code='R')
+
+    print(f'terminus = {terminus}, traceing = {traceing}')
+
+    #トレーシングを100フレーム行った後にラベルが0になったらカウント
+    if num_labels < 1 and traceing > 100:
+        terminus += 1
+
     if num_labels >= 1:
+        #トレースを行っているかのカウント
+        traceing += 1
         # 面積最大のインデックスを取得
         max_index = np.argmax(stats[:,4])
         #print max_index
@@ -90,10 +109,14 @@ def linetrace(small_image, auto_mode=None, color_code='R'):
             print('dx=%f'%(dx) )
             tello.send_rc_control( int(a), int(b), int(c), int(d) )
 
-        #############################################################
-        #ライントレースが完了したことを確認して（丸まったロープを検知したい）
-        #                               modeを次に移行する機能を追加する
-        #############################################################
+    #ターミナルポイントに50フレーム以上いた場合着地モードに移行
+    if terminus > 50 and not auto_mode == 'manual':
+        tello.send_rc_control( 0, 0, 0, 0 )
+        time.sleep(3)
+        tello.rotate_counter_clockwise(90)
+        time.sleep(3)
+        tello.move_up(50)
+        auto_mode = 'land'
 
     return result_image, auto_mode
 
