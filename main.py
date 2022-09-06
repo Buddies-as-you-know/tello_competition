@@ -7,6 +7,8 @@ import cv2                      # OpenCVを使うため
 import numpy as np              # ラベリングにNumPyが必要なので
 
 from window import window       #窓侵入関数
+from linetrace import linetrace #ライントレース関数
+from land import land           #着陸
 
 #認識したい色を設定(R=赤, B=青, G=緑)
 color_code = 'R'
@@ -57,11 +59,11 @@ def main():
 
             # (C) 自律モード
 
-            #離陸と窓マーカー探知
-            if auto_mode == 'takeoff':
-                result_image, auto_mode = takeoff(small_image, auto_mode, color_code)
-                if auto_mode == 'window':
-                    print("======== Done takeoff =======")
+            # #離陸と窓マーカー探知
+            # if auto_mode == 'takeoff':
+            #     result_image, auto_mode = takeoff(small_image, auto_mode, color_code)
+            #     if auto_mode == 'window':
+            #         print("======== Done takeoff =======")
 
             #窓侵入
             elif auto_mode == 'window':
@@ -74,6 +76,9 @@ def main():
                 result_image, auto_mode = linetrace(small_image, auto_mode, color_code)
                 if auto_mode == 'land':
                     print("======== Done linetrace =======")
+
+            elif auto_mode == 'manual':
+                result_image = small_image
 
             # (X) ウィンドウに表示
             cv2.imshow('OpenCV Window', result_image)    # ウィンドウに表示するイメージを変えれば色々表示できる
@@ -127,7 +132,12 @@ def main():
             elif key == ord('1'):
                 tello.takeoff()
                 time.sleep(3)     # 映像が切り替わるまで少し待つ
-                auto_mode = 'takeoff'                    # 追跡モードON
+                tello.move_forward(100)
+                auto_mode = 'window'
+            elif key == ord('2'):
+                auto_mode = 'linetrace'
+            elif key == ord('3'):
+                auto_mode = 'land'
             elif key == ord('0'):
                 tello.send_rc_control( 0, 0, 0, 0 )
                 auto_mode = 'manual'                    # 追跡モードOFF

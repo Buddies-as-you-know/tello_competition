@@ -60,8 +60,6 @@ def linetrace(small_image, auto_mode=None, color_code='R'):
 
     result_image, num_labels, label_image, stats, center = labeling(small_image[250:359,0:479], color_code='R')
 
-    print(f'terminus = {terminus}, traceing = {traceing}')
-
     #トレーシングを100フレーム行った後にラベルが0になったらカウント
     if num_labels < 1 and traceing > 100:
         terminus += 1
@@ -115,7 +113,7 @@ def linetrace(small_image, auto_mode=None, color_code='R'):
         time.sleep(3)
         tello.rotate_counter_clockwise(90)
         time.sleep(3)
-        tello.move_up(50)
+        tello.move_up(150)
         auto_mode = 'land'
 
     return result_image, auto_mode
