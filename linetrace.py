@@ -140,6 +140,8 @@ def main():
             if camera_dir == Tello.CAMERA_DOWNWARD:     # 下向きカメラは画像の向きが90度ずれている
                 small_image = cv2.rotate(small_image, cv2.ROTATE_90_CLOCKWISE)      # 90度回転して、画像の上を前方にする
 
+            # (C) ここから画像処理
+
             #ライントレース
             result_image, auto_mode = linetrace(small_image, auto_mode, color_code)
             if auto_mode == 'land':
