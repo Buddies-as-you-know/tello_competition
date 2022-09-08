@@ -130,6 +130,8 @@ def linetrace(small_image, auto_mode=None, color_code='R'):
         time.sleep(3)
         tello.rotate_counter_clockwise(90)
         time.sleep(3)
+        tello.move_right(50)
+        time.sleep(3)
         auto_mode = 'land'
 
     return result_image, auto_mode

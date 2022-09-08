@@ -153,15 +153,15 @@ def main():
 
             #自律モード
             elif key == ord('1'):
-                tello.takeoff()
-                time.sleep(5)     # 映像が切り替わるまで少し待つ
-                tello.move_forward(50)
                 auto_mode = 'window'
             elif key == ord('2'):
                 auto_mode = 'linetrace'
             elif key == ord('3'):
                 auto_mode = 'land'
             elif key == ord('9'):
+                tello.takeoff()
+                time.sleep(5)     # 映像が切り替わるまで少し待つ
+                tello.move_forward(50)
                 auto_mode = 'window'
             elif key == ord('0'):
                 tello.send_rc_control( 0, 0, 0, 0 )
