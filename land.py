@@ -11,7 +11,7 @@ from hsvColor import hsv_color  #設定された色を取得するため
 # Telloクラスを使って，tellというインスタンス(実体)を作る
 tello = Tello(retry_count=1)
 
-#####################   window()   ############################
+#####################   land()   ############################
 #
 #   引数
 #   small_image:    telloが取得したオリジナル画像（size 480*360）
@@ -29,7 +29,10 @@ tello = Tello(retry_count=1)
 stable = 0          #上下、左右について安定性を維持している時間（フレーム数)
 b_stable = 0        #マーカーとの距離について安定性を維持している時間（フレーム数)
 
-def window(small_image, auto_mode=None, color_code='R'):
+#着陸に期待する初めのマーカーHの面積
+except_area = 500
+
+def land(small_image, auto_mode=None, color_code='R'):
 
     global stable, b_stable
 
@@ -69,6 +72,7 @@ def window(small_image, auto_mode=None, color_code='R'):
         mx = int(center[max_index][0])
         my = int(center[max_index][1])
         #print("(x,y)=%d,%d (w,h)=%d,%d s=%d (mx,my)=%d,%d"%(x, y, w, h, s, mx, my) )
+        print(f's = {s}')
 
         # ラベルを囲うバウンディングボックスを描画
         cv2.rectangle(result_image, (x, y), (x+w, y+h), (255, 0, 255))
@@ -78,7 +82,7 @@ def window(small_image, auto_mode=None, color_code='R'):
         cv2.putText(result_image, "%d"%(s), (x, y+h+30), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 0))
 
         #侵入位置移動モード
-        if auto_mode == 'window':
+        if auto_mode == 'land':
             # a:左右
             # b:前後
             # c:上下
@@ -105,7 +109,10 @@ def window(small_image, auto_mode=None, color_code='R'):
             #print('ax=%f'%(ax) )
 
             ##########  前後  ##########
-            if stable > 200:                       #マーカーを中心に捉えていたら前に移動
+            b = 30
+
+            """
+            if s > 200:                       #マーカーを中心に捉えていたら前に移動
                 #stable = 0                         #移動してもマーカーを中心に捉えるようにする
                 # 制御式
                 bx = 0.003 * (30000 - s)           #期待する面積→45000
@@ -118,10 +125,11 @@ def window(small_image, auto_mode=None, color_code='R'):
                 b = -10 if b < -10.0 else b
 
                 #print(f'b={b}')
+            """
 
             ##########  上下  ##########
             # 制御式
-            cx = 0.3 * (180 - my)
+            cx = 0.3 * (300 - my)
 
             # 上下移動の不感帯を設定
             c = 0.0 if abs(cx) < 10.0 else cx   # ±30未満ならゼロにする
@@ -137,44 +145,7 @@ def window(small_image, auto_mode=None, color_code='R'):
 
             #print('cx=%f'%(cx) )
 
-            """
-            ##########  旋回(ターゲットを画面の中央に捉える機能)  ##########
-            # 制御式(ゲインは低めの0.3)
-            dx = 0.4 * (240 - mx)       # 画面中心との差分
-
-            # 旋回方向の不感帯を設定
-            d = 0.0 if abs(dx) < 10.0 else dx   # ±50未満ならゼロにする
-
-            # 旋回方向のソフトウェアリミッタ(±100を超えないように)
-            d =  100 if d >  100.0 else d
-            d = -100 if d < -100.0 else d
-
-            d = -d   # 旋回方向が逆だったので符号を反転
-            print('dx=%f'%(dx) )
-            """
-
-            #マーカーを中心に捉えていたら安定ポイント+1
-            if (a == 0 and c == 0):
-                stable += 1
-
-            #窓に侵入できる位置に安定していたらb安定ポイント+1
-            if (stable > 200 and b == 0):
-                b_stable += 1
-
-            #窓に侵入できる位置まで来たら侵入モードに移行
-            if b_stable > 50:
-                auto_mode = 'invasion'
-
-            print(f'stable = {stable}, b_stable = {b_stable}')
             tello.send_rc_control( int(a), int(b), int(c), int(d) )
-
-    #窓侵入モード
-    if auto_mode == 'invasion':
-        tello.move_up(30)
-        time.sleep(3)
-        tello.move_forward(100)
-        print(f'===== auto_mode({auto_mode}) done =====')
-        auto_mode = 'room'
 
     return result_image, auto_mode
 
@@ -224,7 +195,7 @@ def main():
             # (C) ここから画像処理
 
             #窓侵入
-            result_image, auto_mode = window(small_image, auto_mode, color_code)
+            result_image, auto_mode = land(small_image, auto_mode, color_code)
             if auto_mode == 'room':
                 print("======== Done Window =======")
                 auto_mode = 'manual'

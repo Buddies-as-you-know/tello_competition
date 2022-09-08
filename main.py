@@ -8,7 +8,7 @@ import numpy as np              # ラベリングにNumPyが必要なので
 
 from window import window       #窓侵入関数
 from linetrace import linetrace #ライントレース関数
-from land import land           #着陸
+#from land import land           #着陸
 
 #認識したい色を設定(R=赤, B=青, G=緑)
 color_code = 'R'
@@ -69,12 +69,14 @@ def main():
             elif auto_mode == 'window':
                 result_image, auto_mode = window(small_image, auto_mode, color_code)
                 if auto_mode == 'room':
+                    print(f'auto_mode = {auto_mode}')
                     print("======== Done Window =======")
 
             #ライントレース
             elif auto_mode == 'linetrace':
                 result_image, auto_mode = linetrace(small_image, auto_mode, color_code)
                 if auto_mode == 'land':
+                    print(f'auto_mode = {auto_mode}')
                     print("======== Done linetrace =======")
 
             elif auto_mode == 'manual':
