@@ -30,6 +30,7 @@ def main():
 
     current_time = time.time()  # 現在時刻の保存変数
     pre_time = current_time     # 5秒ごとの'command'送信のための時刻変数
+    pr_time = current_time
 
     motor_on = False                    # モータON/OFFのフラグ
     camera_dir = Tello.CAMERA_FORWARD   # 前方/下方カメラの方向のフラグ
@@ -37,12 +38,16 @@ def main():
     # トラックバーを作るため，まず最初にウィンドウを生成
     cv2.namedWindow("OpenCV Window")
 
-    # 自動モードフラグ
+    # 自動モードフラグ(デフォルト)
     auto_mode = 'manual'
 
-    #高度を調整するためのフラグ
-    linetrace_fg = 0
-    land_fg = 0
+    #画像保存のためのパラメータ
+    interval = 0.5              #撮影頻度
+    imgnum = 0
+    scsnum = 0
+
+    #img　path
+    img_path = '/Users/ryokokubun/Documents/school/Q2/Drone/tello_competition/img/'
 
     time.sleep(0.5)     # 通信が安定するまでちょっと待つ
 
@@ -73,8 +78,18 @@ def main():
             if auto_mode == 'window':
                 result_image, auto_mode = window(small_image, auto_mode, color_code)
                 if auto_mode == 'room':
+                    auto_mode = 'manual'
                     print(f'auto_mode = {auto_mode}')
                     print("======== Done Window =======")
+
+            #3D Mapping
+            elif auto_mode == 'mapping':
+                # (interval) 秒おきに画像を習得する
+                current_time = time.time()
+                if current_time - pr_time > interval:
+                    cv2.imwrite(img_path + 'map_img/tello' + str(imgnum) + ".jpg", small_image)
+                    pr_time = current_time
+                    imgnum += 1
 
             #ライントレース
             elif auto_mode == 'linetrace':
@@ -88,6 +103,7 @@ def main():
                 result_image, auto_mode = land(small_image, auto_mode, color_code)
                 if auto_mode == 'fin':
                     print(f'auto_mode = {auto_mode}')
+                    auto_mode = 'manual'
                     print("======== Done land =======")
 
             elif auto_mode == 'manual':
@@ -139,7 +155,11 @@ def main():
                 else:                                      # 下方なら前方へ変更
                     tello.set_video_direction(Tello.CAMERA_FORWARD)
                     camera_dir = Tello.CAMERA_FORWARD      # フラグ変更
-                time.sleep(0.5)     # 映像が切り替わるまで少し待つ
+                time.sleep(0.5)             # 映像が切り替わるまで少し待つ
+            elif key == ord('b'):           #スクリーンショット
+                cv2.imwrite(img_path + 'screen_shot/tello' + str(scsnum) + ".jpg", small_image)
+                print('== Took a screenshot ==')
+                scsnum += 1
 
             #お遊びフリップ関数
             elif key == ord('u'):
@@ -153,19 +173,27 @@ def main():
 
             #自律モード
             elif key == ord('1'):
-                auto_mode = 'window'
-            elif key == ord('2'):
-                auto_mode = 'linetrace'
-            elif key == ord('3'):
-                auto_mode = 'land'
-            elif key == ord('9'):
                 tello.takeoff()
                 time.sleep(5)     # 映像が切り替わるまで少し待つ
                 tello.move_forward(50)
+                #auto_mode = 'window'
+            elif key == ord('2'):
                 auto_mode = 'window'
+                print(f'auto_mode={auto_mode}')
+            elif key == ord('3'):
+                auto_mode = 'mapping'
+                print(f'auto_mode={auto_mode}')
+            elif key == ord('4'):
+                auto_mode = 'linetrace'
+                print(f'auto_mode={auto_mode}')
+            elif key == ord('5'):
+                auto_mode = 'land'
+                print(f'auto_mode={auto_mode}')
+
             elif key == ord('0'):
                 tello.send_rc_control( 0, 0, 0, 0 )
                 auto_mode = 'manual'                    # 追跡モードOFF
+                print(f'auto_mode={auto_mode}')
 
             # (Z) 10秒おきに'command'を送って、死活チェックを通す
             current_time = time.time()                          # 現在時刻を取得

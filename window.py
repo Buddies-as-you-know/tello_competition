@@ -206,8 +206,6 @@ def main():
 
     time.sleep(0.5)     # 通信が安定するまでちょっと待つ
 
-    color_code = 'G'
-
     # ループ部
     # Ctrl+cが押されるまでループ
     try:
@@ -286,10 +284,6 @@ def main():
             elif key == ord('0'):
                 tello.send_rc_control( 0, 0, 0, 0 )
                 auto_mode = 'manual'                    # 追跡モードOFF
-            elif key == ord('2'):
-                color_code = 'G'
-            elif key == ord('3'):
-                color_code = 'DG'
 
             # (Z) 10秒おきに'command'を送って、死活チェックを通す
             current_time = time.time()                          # 現在時刻を取得
