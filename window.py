@@ -170,7 +170,7 @@ def window(small_image, auto_mode=None, color_code='R'):
 
     #窓侵入モード
     if auto_mode == 'invasion':
-        tello.move_up(30)
+        tello.move_up(20)
         time.sleep(3)
         tello.move_forward(100)
         print(f'===== auto_mode({auto_mode}) done =====')

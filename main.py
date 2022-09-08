@@ -40,9 +40,9 @@ def main():
     # 自動モードフラグ
     auto_mode = 'manual'
 
-    #ライントレースの高度を調整するためのフラグ
-    b_linetrace_fg = 0
-    a_linetrace_fg = 0
+    #高度を調整するためのフラグ
+    linetrace_fg = 0
+    land_fg = 0
 
     time.sleep(0.5)     # 通信が安定するまでちょっと待つ
 
@@ -72,32 +72,20 @@ def main():
             #窓侵入
             if auto_mode == 'window':
                 result_image, auto_mode = window(small_image, auto_mode, color_code)
-
                 if auto_mode == 'room':
                     print(f'auto_mode = {auto_mode}')
                     print("======== Done Window =======")
 
             #ライントレース
             elif auto_mode == 'linetrace':
-                #ドローンの高さを10に設定
-                if b_linetrace_fg == 0:
-                    state = tello.get_current_state()
-                    state['h']
-
                 result_image, auto_mode = linetrace(small_image, auto_mode, color_code)
-
                 if auto_mode == 'land':
-                    #ドローンの高さを70に設定
-                    if b_linetrace_fg == 0:
-                        state = tello.get_current_state()
-                        state['h']
                     print(f'auto_mode = {auto_mode}')
                     print("======== Done linetrace =======")
 
             #着陸
             elif auto_mode == 'land':
                 result_image, auto_mode = land(small_image, auto_mode, color_code)
-                
                 if auto_mode == 'fin':
                     print(f'auto_mode = {auto_mode}')
                     print("======== Done land =======")
@@ -156,13 +144,15 @@ def main():
             #自律モード
             elif key == ord('1'):
                 tello.takeoff()
-                time.sleep(3)     # 映像が切り替わるまで少し待つ
+                time.sleep(5)     # 映像が切り替わるまで少し待つ
                 tello.move_forward(100)
                 auto_mode = 'window'
             elif key == ord('2'):
                 auto_mode = 'linetrace'
             elif key == ord('3'):
                 auto_mode = 'land'
+            elif key == ord('9'):
+                auto_mode = 'window'
             elif key == ord('0'):
                 tello.send_rc_control( 0, 0, 0, 0 )
                 auto_mode = 'manual'                    # 追跡モードOFF

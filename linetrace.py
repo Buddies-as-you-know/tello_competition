@@ -54,11 +54,28 @@ def labeling(bgr_image, color_code='R'):
 traceing = 0
 terminus = 0
 
+#高度を調整するためのフラグ
+linetrace_fg = 0
+
 def linetrace(small_image, auto_mode=None, color_code='R'):
 
-    global terminus, traceing
+    global terminus, traceing, linetrace_fg
+
+    #ドローンの高さ
+    Drone_hight = 10
 
     result_image, num_labels, label_image, stats, center = labeling(small_image[250:359,0:479], color_code='R')
+
+    #ドローンの高さを10に設定
+    if linetrace_fg == 0:
+        state = tello.get_current_state()
+        if not state['h'] == Drone_hight:
+            time.sleep(3)
+            tello.send_rc_control( 0, 0, Drone_hight - state['h'], 0 )
+            time.sleep(3)
+        state = tello.get_current_state()
+        print(f"Drone hight is {state['h']} (expect:{Drone_hight})")
+        linetrace_fg = 1
 
     #トレーシングを100フレーム行った後にラベルが0になったらカウント
     if num_labels < 1 and traceing > 100:
@@ -104,7 +121,7 @@ def linetrace(small_image, auto_mode=None, color_code='R'):
 
             d = -d   # 旋回方向が逆だったので符号を反転
 
-            print('dx=%f'%(dx) )
+            #print('dx=%f'%(dx) )
             tello.send_rc_control( int(a), int(b), int(c), int(d) )
 
     #ターミナルポイントに50フレーム以上いた場合着地モードに移行
@@ -113,7 +130,6 @@ def linetrace(small_image, auto_mode=None, color_code='R'):
         time.sleep(3)
         tello.rotate_counter_clockwise(90)
         time.sleep(3)
-        tello.move_up(150)
         auto_mode = 'land'
 
     return result_image, auto_mode

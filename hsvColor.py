@@ -13,5 +13,8 @@ def hsv_color(c_code):
     elif c_code == 'G':
         hsv_min = (50, 100, 70)
         hsv_max = (77, 255, 115)
+    elif c_code == 'DR':            #Dark Red
+        hsv_min = (0, 170, 20)
+        hsv_max = (15, 255, 255)
 
     return hsv_min, hsv_max

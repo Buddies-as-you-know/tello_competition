@@ -29,9 +29,15 @@ tello = Tello(retry_count=1)
 land_point = 0
 flag = 0
 
+#高度を調整するためのフラグ
+land_fg = 0
+
 def land(small_image, auto_mode=None, color_code='R'):
 
-    global land_point, flag
+    global land_point, flag, land_fg
+
+    #ドローンの高さ
+    Drone_hight = 70
 
     bgr_image = small_image                              # 窓を認識するまで広い視野で確認する
     hsv_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2HSV)  # BGR画像 -> HSV画像
@@ -54,6 +60,17 @@ def land(small_image, auto_mode=None, color_code='R'):
     num_labels = num_labels - 1
     stats = np.delete(stats, 0, 0)
     center = np.delete(center, 0, 0)
+
+    #ドローンの高さを70に設定
+    if land_fg == 0:
+        state = tello.get_current_state()
+        if not state['h'] == Drone_hight:
+            time.sleep(3)
+            tello.send_rc_control( 0, 0, Drone_hight - state['h'], 0 )
+            time.sleep(3)
+        state = tello.get_current_state()
+        print(f"Drone hight is {state['h']} (expect:{Drone_hight})")
+        land_fg = 1
 
     if auto_mode == 'land':
         print(f'num_labels={num_labels}, flag={flag}, land_point={land_point}')
