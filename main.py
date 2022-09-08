@@ -8,7 +8,7 @@ import numpy as np              # ラベリングにNumPyが必要なので
 
 from window import window       #窓侵入関数
 from linetrace import linetrace #ライントレース関数
-#from land import land           #着陸
+from land import land           #着陸
 
 #認識したい色を設定(R=赤, B=青, G=緑)
 color_code = 'R'
@@ -40,6 +40,10 @@ def main():
     # 自動モードフラグ
     auto_mode = 'manual'
 
+    #ライントレースの高度を調整するためのフラグ
+    b_linetrace_fg = 0
+    a_linetrace_fg = 0
+
     time.sleep(0.5)     # 通信が安定するまでちょっと待つ
 
     # ループ部
@@ -66,18 +70,37 @@ def main():
             #         print("======== Done takeoff =======")
 
             #窓侵入
-            elif auto_mode == 'window':
+            if auto_mode == 'window':
                 result_image, auto_mode = window(small_image, auto_mode, color_code)
+
                 if auto_mode == 'room':
                     print(f'auto_mode = {auto_mode}')
                     print("======== Done Window =======")
 
             #ライントレース
             elif auto_mode == 'linetrace':
+                #ドローンの高さを10に設定
+                if b_linetrace_fg == 0:
+                    state = tello.get_current_state()
+                    state['h']
+
                 result_image, auto_mode = linetrace(small_image, auto_mode, color_code)
+
                 if auto_mode == 'land':
+                    #ドローンの高さを70に設定
+                    if b_linetrace_fg == 0:
+                        state = tello.get_current_state()
+                        state['h']
                     print(f'auto_mode = {auto_mode}')
                     print("======== Done linetrace =======")
+
+            #着陸
+            elif auto_mode == 'land':
+                result_image, auto_mode = land(small_image, auto_mode, color_code)
+                
+                if auto_mode == 'fin':
+                    print(f'auto_mode = {auto_mode}')
+                    print("======== Done land =======")
 
             elif auto_mode == 'manual':
                 result_image = small_image
@@ -91,8 +114,8 @@ def main():
             key = cv2.waitKey(1) & 0xFF
             if key == 27:                   # key が27(ESC)だったらwhileループを脱出，プログラム終了
                 break
-            #elif key == ord('t'):           # 離陸
-            #    tello.takeoff()
+            elif key == ord('t'):           # 離陸
+                tello.takeoff()
             elif key == ord('l'):           # 着陸
                 tello.send_rc_control( 0, 0, 0, 0 )
                 tello.land()

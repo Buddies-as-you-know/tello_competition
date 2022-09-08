@@ -20,27 +20,24 @@ tello = Tello(retry_count=1)
 #
 #   戻り値
 #   result_image:   画像処理後の画像
-#   auto_mode:      telloの現在の状態（完了したら状態は'room'
+#   auto_mode:      telloの現在の状態（完了したら状態は'manual'
 #                                    になります)
 #
 ###############################################################
 
 # 安定性フラグ
-stable = 0          #上下、左右について安定性を維持している時間（フレーム数)
-b_stable = 0        #マーカーとの距離について安定性を維持している時間（フレーム数)
-
-#着陸に期待する初めのマーカーHの面積
-except_area = 500
+land_point = 0
+flag = 0
 
 def land(small_image, auto_mode=None, color_code='R'):
 
-    global stable, b_stable
+    global land_point, flag
 
     bgr_image = small_image                              # 窓を認識するまで広い視野で確認する
     hsv_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2HSV)  # BGR画像 -> HSV画像
 
     #認識する色のhsvを取得（デフォルトは赤）
-    hsv_min, hsv_max = hsv_color(color_code)
+    hsv_min, hsv_max = hsv_color('R')
 
     # inRange関数で範囲指定２値化
     bin_image = cv2.inRange(hsv_image, hsv_min, hsv_max)        # HSV画像なのでタプルもHSV並び
@@ -58,6 +55,21 @@ def land(small_image, auto_mode=None, color_code='R'):
     stats = np.delete(stats, 0, 0)
     center = np.delete(center, 0, 0)
 
+    if auto_mode == 'land':
+        print(f'num_labels={num_labels}, flag={flag}, land_point={land_point}')
+
+        #フラグが立っており、マーカーが見えなくなったらland_point+1
+        if num_labels < 1 and flag == 1:
+            tello.send_rc_control( 0, 0, 0, 0 )
+            land_point += 1
+
+        #land_pointが基準値(75:マーカーが見えなくなってからのフレーム数)を超えていたら着地
+        if land_point > 100:
+            tello.move_forward(20)
+            time.sleep(3)
+            tello.land()
+            auto_mode = 'fin'
+
     if num_labels >= 1:
         # 面積最大のインデックスを取得
         max_index = np.argmax(stats[:,4])
@@ -72,7 +84,6 @@ def land(small_image, auto_mode=None, color_code='R'):
         mx = int(center[max_index][0])
         my = int(center[max_index][1])
         #print("(x,y)=%d,%d (w,h)=%d,%d s=%d (mx,my)=%d,%d"%(x, y, w, h, s, mx, my) )
-        print(f's = {s}')
 
         # ラベルを囲うバウンディングボックスを描画
         cv2.rectangle(result_image, (x, y), (x+w, y+h), (255, 0, 255))
@@ -80,6 +91,11 @@ def land(small_image, auto_mode=None, color_code='R'):
         # 重心位置の座標と面積を表示
         cv2.putText(result_image, "%d,%d"%(mx,my), (x-15, y+h+15), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 0))
         cv2.putText(result_image, "%d"%(s), (x, y+h+30), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 0))
+
+        #マーカーのサイズが1000を超えたらフラグを立てる
+        if s > 1000:
+            flag = 1
+        #print(f's = {s}')
 
         #侵入位置移動モード
         if auto_mode == 'land':
@@ -94,56 +110,32 @@ def land(small_image, auto_mode=None, color_code='R'):
             ax = 0.3 * (240 - mx)
 
             # 左右移動の不感帯を設定
-            a = 0.0 if abs(ax) < 10.0 else ax   # ±30未満ならゼロにする
+            a = 0.0 if abs(ax) < 9.0 else ax   # ±30未満ならゼロにする
 
             # 左右移動のソフトウェアリミッタ(±20を超えないように)
-            a =  20 if a >  20.0 else a
-            a = -20 if a < -20.0 else a
-
-            #マーカーに近づくとブレが大きくなるためリミッタを狭める
-            if stable > 200:
-                a =  10 if a >  10.0 else a
-                a = -10 if a < -10.0 else a
+            a =  50 if a >  50.0 else a
+            a = -50 if a < -50.0 else a
 
             a = -a   # 左右方向が逆だったので符号を反転
             #print('ax=%f'%(ax) )
 
             ##########  前後  ##########
-            b = 30
-
-            """
-            if s > 200:                       #マーカーを中心に捉えていたら前に移動
-                #stable = 0                         #移動してもマーカーを中心に捉えるようにする
-                # 制御式
-                bx = 0.003 * (30000 - s)           #期待する面積→45000
-
-                # 前後移動の不感帯を設定
-                b = 0.0 if abs(bx) < 9.0 else bx   # 面積差が±3000未満ならゼロにする
-
-                # 前後移動のソフトウェアリミッタ(±10を超えないように)
-                b =  10 if b >  10.0 else b
-                b = -10 if b < -10.0 else b
-
-                #print(f'b={b}')
-            """
+            b = 20
 
             ##########  上下  ##########
             # 制御式
-            cx = 0.3 * (300 - my)
+            cx = 0.3 * (200 - (my - h/2))
 
             # 上下移動の不感帯を設定
             c = 0.0 if abs(cx) < 10.0 else cx   # ±30未満ならゼロにする
 
-            # 上下移動のソフトウェアリミッタ(±20を超えないように)
-            c =  20 if c >  20.0 else c
-            c = -20 if c < -20.0 else c
-
-            #マーカーに近づくとブレが大きくなるためリミッタを狭める
-            if stable > 200:
-                c =  10 if c >  10.0 else c
-                c = -10 if c < -10.0 else c
+            # 上下移動のソフトウェアリミッタ(±50を超えないように)
+            c =  50 if c >  50.0 else c
+            c = -50 if c < -50.0 else c
 
             #print('cx=%f'%(cx) )
+            if s > 30000:
+                a = b = c = d = 0
 
             tello.send_rc_control( int(a), int(b), int(c), int(d) )
 
@@ -168,6 +160,8 @@ def main():
 
     motor_on = False                    # モータON/OFFのフラグ
     camera_dir = Tello.CAMERA_FORWARD   # 前方/下方カメラの方向のフラグ
+
+    result_image = []
 
     # トラックバーを作るため，まず最初にウィンドウを生成
     cv2.namedWindow("OpenCV Window")
@@ -194,10 +188,10 @@ def main():
 
             # (C) ここから画像処理
 
-            #窓侵入
+            #着陸
             result_image, auto_mode = land(small_image, auto_mode, color_code)
-            if auto_mode == 'room':
-                print("======== Done Window =======")
+            if auto_mode == 'fin':
+                print("======== Done land =======")
                 auto_mode = 'manual'
 
             # (X) ウィンドウに表示
@@ -217,7 +211,7 @@ def main():
             elif key == ord('w'):           # 前進 30cm
                 tello.move_forward(30)
             elif key == ord('s'):           # 後進 30cm
-                tello.move_back(30)
+                tello.move_back(100)
             elif key == ord('a'):           # 左移動 30cm
                 tello.move_left(30)
             elif key == ord('d'):           # 右移動 30cm
@@ -248,10 +242,7 @@ def main():
                     camera_dir = Tello.CAMERA_FORWARD      # フラグ変更
                 time.sleep(0.5)     # 映像が切り替わるまで少し待つ
             elif key == ord('1'):
-                tello.takeoff()
-                time.sleep(3)     # 映像が切り替わるまで少し待つ
-                tello.move_forward(100)
-                auto_mode = 'window'               # 追跡モードON
+                auto_mode = 'land'               # 追跡モードON
             elif key == ord('0'):
                 tello.send_rc_control( 0, 0, 0, 0 )
                 auto_mode = 'manual'                    # 追跡モードOFF
