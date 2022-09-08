@@ -11,7 +11,7 @@ from linetrace import linetrace #ライントレース関数
 from land import land           #着陸
 
 #認識したい色を設定(R=赤, B=青, G=緑)
-color_code = 'R'
+color_code = 'B'
 
 # メイン関数
 def main():
@@ -141,11 +141,21 @@ def main():
                     camera_dir = Tello.CAMERA_FORWARD      # フラグ変更
                 time.sleep(0.5)     # 映像が切り替わるまで少し待つ
 
+            #お遊びフリップ関数
+            elif key == ord('u'):
+                tello.flip_forward()
+            elif key == ord('j'):
+                tello.flip_back()
+            elif key == ord('h'):
+                tello.flip_left()
+            elif key == ord('k'):
+                tello.flip_right()
+
             #自律モード
             elif key == ord('1'):
                 tello.takeoff()
                 time.sleep(5)     # 映像が切り替わるまで少し待つ
-                tello.move_forward(100)
+                tello.move_forward(50)
                 auto_mode = 'window'
             elif key == ord('2'):
                 auto_mode = 'linetrace'

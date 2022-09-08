@@ -108,7 +108,7 @@ def window(small_image, auto_mode=None, color_code='R'):
             if stable > 200:                       #マーカーを中心に捉えていたら前に移動
                 #stable = 0                         #移動してもマーカーを中心に捉えるようにする
                 # 制御式
-                bx = 0.003 * (30000 - s)           #期待する面積→45000
+                bx = 0.003 * (20000 - s)           #期待する面積→45000
 
                 # 前後移動の不感帯を設定
                 b = 0.0 if abs(bx) < 9.0 else bx   # 面積差が±3000未満ならゼロにする
@@ -206,6 +206,8 @@ def main():
 
     time.sleep(0.5)     # 通信が安定するまでちょっと待つ
 
+    color_code = 'G'
+
     # ループ部
     # Ctrl+cが押されるまでループ
     try:
@@ -284,6 +286,10 @@ def main():
             elif key == ord('0'):
                 tello.send_rc_control( 0, 0, 0, 0 )
                 auto_mode = 'manual'                    # 追跡モードOFF
+            elif key == ord('2'):
+                color_code = 'G'
+            elif key == ord('3'):
+                color_code = 'DG'
 
             # (Z) 10秒おきに'command'を送って、死活チェックを通す
             current_time = time.time()                          # 現在時刻を取得
