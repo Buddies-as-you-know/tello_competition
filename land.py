@@ -62,11 +62,9 @@ class Land:
         self.nineimg = nineimg
         down_or_forward = self.judge_bottom_white()
         if down_or_forward == "down":
-            pass
-            # telloを下げる。
+            tello.move_down(20)
         else:
-            pass
-            # tello前に進める。
+            tello.move_forward(20)
 
 
 if __name__ == "__main__":
