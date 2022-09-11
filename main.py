@@ -6,8 +6,6 @@ import time  # time.sleepを使いたいので
 import cv2  # OpenCVを使うため
 import numpy as np
 from djitellopy import Tello  # DJITelloPyのTelloクラスをインポート
-from facenet_pytorch import MTCNN, InceptionResnetV1
-from PIL import Image
 
 
 def detect_red_color(img):
@@ -67,6 +65,8 @@ def detect_blue_color(img):
     masked_img = cv2.bitwise_and(img, img, mask=mask)
  
     return mask, masked_img
+
+
 def ninesplit(image):
     h, w = image.shape[:2]
     n = 3  # 画像分割数
@@ -75,12 +75,12 @@ def ninesplit(image):
     c = [image[x0*x:x0*(x+1), y0*y:y0*(y+1)] for x in range(n) for y in range(n)]
     p = []
     for i, img in enumerate(c):
-        p.append(img)
+        p.append(sum(sum(img)))
     img_x = np.vstack((np.hstack(p[0:3]),
                    np.hstack(p[3:6]),
                    np.hstack(p[6:9])
                   ))
-    print(img_x.shape)
+    print(img_x)
     return img_x
 
 # メイン関数
@@ -88,7 +88,6 @@ def main():
     # 初期化部
     # Telloクラスを使って，tellというインスタンス(実体)を作る
     tello = Tello(retry_count=1)    # 応答が来ないときのリトライ回数は1(デフォルトは3)
-    tello_state = 0                 #telloの操作状態
     tello.RESPONSE_TIMEOUT = 0.01   # コマンド応答のタイムアウトは短くした(デフォルトは7)
 
     # Telloへ接続
@@ -108,6 +107,7 @@ def main():
     time.sleep(0.5)     # 通信が安定するまでちょっと待つ
     # ループ部
     # Ctrl+cが押されるまでループ
+    drone_state = "landing"
     try:
         # 永久ループで繰り返す
         while True:
@@ -129,46 +129,44 @@ def main():
             
             cv2.imshow('OpenCV Window', mask)    # ウィンドウに表示するイメージを変えれば色々表示できる
             #nineimg     =    ninesplit(mask)
-            #print(np.argmax(nineimg))
-            """
-            if np.argmax(nineimg)==0:
-                cv2.imwrite('./image/'+str(np.argmax(nineimg))+'/'+str(i0)+'.jpg', mask)
-                i0 += 1
-            elif np.argmax(nineimg)==1:
-                cv2.imwrite('./image/'+str(np.argmax(nineimg))+'/'+str(i1)+'.jpg', mask)
-                i1 += 1
-            elif np.argmax(nineimg)==2:
-                cv2.imwrite('./image/'+str(np.argmax(nineimg))+'/'+str(i2)+'.jpg', mask)
-                i2 += 1
-            elif np.argmax(nineimg)==3:
-                cv2.imwrite('./image/'+str(np.argmax(nineimg))+'/'+str(i3)+'.jpg', mask)
-                i3 += 1
-            elif np.argmax(nineimg)==4:
-                cv2.imwrite('./image/'+str(np.argmax(nineimg))+'/'+str(i4)+'.jpg', mask)
-                i4 += 1
-            elif np.argmax(nineimg)==5:
-                cv2.imwrite('./image/'+str(np.argmax(nineimg))+'/'+str(i5)+'.jpg', mask)
-                i5 += 1
-            elif np.argmax(nineimg)==6:
-                cv2.imwrite('./image/'+str(np.argmax(nineimg))+'/'+str(i6)+'.jpg', mask)
-                i6 += 1 
-            elif np.argmax(nineimg)==1:
-                cv2.imwrite('./image/'+str(np.argmax(nineimg))+'/'+str(i7)+'.jpg', mask)
-                i7 += 1
-            else:
-                cv2.imwrite('./image/'+str(np.argmax(nineimg))+'/'+str(i8)+'.jpg', mask)
-                i8 += 1
-            """
-            
-            # (Y) OpenCVウィンドウでキー入力を1ms待つ
-            if tello_state == 0:
+            if drone_state == "landing":
                 tello.takeoff()
-                tello_state = 1
-            elif tello_state == 1:
-                tello.land()
-            
-                
-
+                drone_state = "takeoff"
+            else:
+                window_potision = np.argmax(mask)
+                colore_intensity = np.max(mask)
+                if colore_intensity == 0:
+                    left_right = "right"
+                    width = 15
+                    if left_right == "rigth":
+                        tello.move_right(width)
+                        left_right = "left"
+                        width += 5
+                    elif left_right == "left":
+                        tello.move_right(width)
+                        left_right = "right"
+                        width += 5 
+                elif colore_intensity <= 300:
+                    tello.move_forward(20)
+                    
+                if window_potision[0] == 0:
+                    tello.move_left(20)
+                elif window_potision[0] == 2:
+                    tello.move_right(20)
+                else:
+                    print(tello.get_current_state())
+                if window_potision[1] == 0:
+                    tello.move_up(20)
+                elif window_potision[1] == 2:
+                    tello.move_down(20)
+                else:
+                    print(tello.get_current_state())
+                if  window_potision == (0,0):
+                    tello.move_up(20)
+                    tello.move_forward(20)
+                    
+            #key = cv2.waitKey(1) & 0xFF
+    
     except( KeyboardInterrupt, SystemExit):    # Ctrl+cが押されたらループ脱出
         print( "Ctrl+c を検知" )
 
