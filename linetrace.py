@@ -64,7 +64,7 @@ def linetrace(small_image, auto_mode=None, color_code='R'):
     #ドローンの高さ
     Drone_hight = 10
 
-    result_image, num_labels, label_image, stats, center = labeling(small_image[250:359,0:479], color_code='R')
+    result_image, num_labels, label_image, stats, center = labeling(small_image[250:359,0:479], color_code)
 
     #ドローンの高さを10に設定
     if linetrace_fg == 0:
@@ -128,7 +128,7 @@ def linetrace(small_image, auto_mode=None, color_code='R'):
     if terminus > 50 and not auto_mode == 'manual':
         tello.send_rc_control( 0, 0, 0, 0 )
         time.sleep(3)
-        tello.rotate_counter_clockwise(90)
+        tello.rotate_counter_clockwise(40)
         time.sleep(3)
         tello.move_right(50)
         time.sleep(3)

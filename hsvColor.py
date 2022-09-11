@@ -4,9 +4,10 @@
 #color code(R=赤, B=青, G=緑)を受け取りそのhsvそれぞれのminとmaxを返す
 def hsv_color(c_code):
 
-    if c_code == 'R':
+    if c_code == 'LR':              #landing RED
         hsv_min = (0, 200, 77)
         hsv_max = (15, 255, 255)
+
     # elif c_code == 'B':
     #     hsv_min = (83, 0, 30)
     #     hsv_max = (140, 255, 255)
@@ -14,10 +15,10 @@ def hsv_color(c_code):
     #     hsv_min = (50, 100, 70)
     #     hsv_max = (77, 255, 115)
 
-    # if c_code == 'DR':            #Dark Red
-    #     hsv_min = (0, 170, 20)
-    #     hsv_max = (15, 255, 255)
-    elif c_code == 'G':            #Dark Green
+    if c_code == 'R':               #Dark Red
+        hsv_min = (0, 80, 20)
+        hsv_max = (15, 255, 255)
+    elif c_code == 'G':             #Dark Green
         hsv_min = (40, 50, 20)
         hsv_max = (80, 255, 255)
     elif c_code == 'B':             #Dark Blue

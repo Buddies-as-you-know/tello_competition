@@ -11,7 +11,7 @@ from linetrace import linetrace #ライントレース関数
 from land import land           #着陸
 
 #認識したい色を設定(R=赤, B=青, G=緑)
-color_code = 'B'
+color_code = 'G'
 
 # メイン関数
 def main():
@@ -42,9 +42,16 @@ def main():
     auto_mode = 'manual'
 
     #画像保存のためのパラメータ
-    interval = 0.5              #撮影頻度
+    interval = 1.0              #撮影頻度
     imgnum = 0
     scsnum = 0
+
+    #speed
+    distance = 30
+    #旋回角度
+    degree = 30
+    #昇降距離
+    lift = 30
 
     #img　path
     img_path = '/Users/ryokokubun/Documents/school/Q2/Drone/tello_competition/img/'
@@ -68,12 +75,6 @@ def main():
 
             # (C) 自律モード
 
-            # #離陸と窓マーカー探知
-            # if auto_mode == 'takeoff':
-            #     result_image, auto_mode = takeoff(small_image, auto_mode, color_code)
-            #     if auto_mode == 'window':
-            #         print("======== Done takeoff =======")
-
             #窓侵入
             if auto_mode == 'window':
                 result_image, auto_mode = window(small_image, auto_mode, color_code)
@@ -96,11 +97,12 @@ def main():
                 result_image, auto_mode = linetrace(small_image, auto_mode, color_code)
                 if auto_mode == 'land':
                     print(f'auto_mode = {auto_mode}')
+                    #auto_mode = 'manual'
                     print("======== Done linetrace =======")
 
             #着陸
             elif auto_mode == 'land':
-                result_image, auto_mode = land(small_image, auto_mode, color_code)
+                result_image, auto_mode = land(small_image, auto_mode, 'LR')
                 if auto_mode == 'fin':
                     print(f'auto_mode = {auto_mode}')
                     auto_mode = 'manual'
@@ -124,21 +126,21 @@ def main():
                 tello.send_rc_control( 0, 0, 0, 0 )
                 tello.land()
             elif key == ord('w'):           # 前進 30cm
-                tello.move_forward(30)
+                tello.move_forward(distance)
             elif key == ord('s'):           # 後進 30cm
-                tello.move_back(30)
+                tello.move_back(distance)
             elif key == ord('a'):           # 左移動 30cm
-                tello.move_left(30)
+                tello.move_left(distance)
             elif key == ord('d'):           # 右移動 30cm
-                tello.move_right(30)
+                tello.move_right(distance)
             elif key == ord('e'):           # 旋回-時計回り 30度
-                tello.rotate_clockwise(30)
+                tello.rotate_clockwise(degree)
             elif key == ord('q'):           # 旋回-反時計回り 30度
-                tello.rotate_counter_clockwise(30)
+                tello.rotate_counter_clockwise(degree)
             elif key == ord('r'):           # 上昇 30cm
-                tello.move_up(30)
+                tello.move_up(lift)
             elif key == ord('f'):           # 下降 30cm
-                tello.move_down(30)
+                tello.move_down(lift)
             elif key == ord('p'):           # ステータスをprintする
                 print(tello.get_current_state())
             elif key == ord('m'):           # モータ始動/停止を切り替え
@@ -156,26 +158,54 @@ def main():
                     tello.set_video_direction(Tello.CAMERA_FORWARD)
                     camera_dir = Tello.CAMERA_FORWARD      # フラグ変更
                 time.sleep(0.5)             # 映像が切り替わるまで少し待つ
-            elif key == ord('b'):           #スクリーンショット
+            elif key == 32:                 #スペースキーでスクリーンショット
                 cv2.imwrite(img_path + 'screen_shot/tello' + str(scsnum) + ".jpg", small_image)
                 print('== Took a screenshot ==')
                 scsnum += 1
+            elif key == ord('g'):           # 移動距離を20->30->100とボタンを押すごとに変更(デフォルトは30)
+                if distance == 20:
+                    #画像取得のインターバルを速度に応じて変更
+                    interval = 1
+                    distance = 30
+                elif distance == 30:
+                    #画像取得のインターバルを速度に応じて変更
+                    interval = 0.3
+                    distance = 100
+                elif distance == 100:
+                    #画像取得のインターバルを速度に応じて変更
+                    interval = 1.2
+                    distance = 20
+                print(f'distance={distance}, interval={interval}')
+            elif key == ord('v'):           # 旋回角度を10->30->90とボタンを押すごとに変更(デフォルトは30)
+                if degree == 10:
+                    degree = 30
+                elif degree == 30:
+                    degree = 90
+                elif degree == 90:
+                    degree = 10
+                print(f'degree={degree}')
+            elif key == ord('b'):           # 昇降距離を30->50とボタンを押すごとに変更(デフォルトは30)
+                if lift == 30:
+                    lift = 50
+                elif lift == 50:
+                    lift = 30
+                print(f'lift={lift}')
 
-            #お遊びフリップ関数
-            elif key == ord('u'):
-                tello.flip_forward()
-            elif key == ord('j'):
-                tello.flip_back()
-            elif key == ord('h'):
-                tello.flip_left()
-            elif key == ord('k'):
-                tello.flip_right()
+            # #お遊びフリップ関数
+            # elif key == ord('u'):
+            #     tello.flip_forward()
+            # elif key == ord('j'):
+            #     tello.flip_back()
+            # elif key == ord('h'):
+            #     tello.flip_left()
+            # elif key == ord('k'):
+            #     tello.flip_right()
 
             #自律モード
             elif key == ord('1'):
                 tello.takeoff()
                 time.sleep(5)     # 映像が切り替わるまで少し待つ
-                tello.move_forward(50)
+                tello.move_forward(100)
                 #auto_mode = 'window'
             elif key == ord('2'):
                 auto_mode = 'window'

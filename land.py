@@ -43,7 +43,7 @@ def land(small_image, auto_mode=None, color_code='R'):
     hsv_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2HSV)  # BGR画像 -> HSV画像
 
     #認識する色のhsvを取得（デフォルトは赤）
-    hsv_min, hsv_max = hsv_color('R')
+    hsv_min, hsv_max = hsv_color('LR')
 
     # inRange関数で範囲指定２値化
     bin_image = cv2.inRange(hsv_image, hsv_min, hsv_max)        # HSV画像なのでタプルもHSV並び
@@ -130,8 +130,8 @@ def land(small_image, auto_mode=None, color_code='R'):
             a = 0.0 if abs(ax) < 9.0 else ax   # ±30未満ならゼロにする
 
             # 左右移動のソフトウェアリミッタ(±20を超えないように)
-            a =  50 if a >  50.0 else a
-            a = -50 if a < -50.0 else a
+            a =  30 if a >  30.0 else a
+            a = -30 if a < -30.0 else a
 
             a = -a   # 左右方向が逆だったので符号を反転
             #print('ax=%f'%(ax) )
