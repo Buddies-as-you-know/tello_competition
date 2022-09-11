@@ -9,6 +9,7 @@ import numpy as np              # ラベリングにNumPyが必要なので
 from window import window       #窓侵入関数
 from linetrace import linetrace #ライントレース関数
 from land import land           #着陸
+from take_Ushape import take_Ushape #自動マッピング
 
 #認識したい色を設定(R=赤, B=青, G=緑)
 color_code = 'G'
@@ -54,7 +55,7 @@ def main():
     lift = 30
 
     #img　path
-    img_path = '/Users/ryokokubun/Documents/school/Q2/Drone/tello_competition/img/'
+    img_path = '/Users/ryokokubun/Desktop/drone/'
 
     time.sleep(0.5)     # 通信が安定するまでちょっと待つ
 
@@ -91,6 +92,10 @@ def main():
                     cv2.imwrite(img_path + 'map_img/tello' + str(imgnum) + ".jpg", small_image)
                     pr_time = current_time
                     imgnum += 1
+
+            #自動移動マッピング
+            elif auto_mode == 'auto_mapping':
+                take_Ushape(tello)
 
             #ライントレース
             elif auto_mode == 'linetrace':
@@ -218,6 +223,9 @@ def main():
                 print(f'auto_mode={auto_mode}')
             elif key == ord('5'):
                 auto_mode = 'land'
+                print(f'auto_mode={auto_mode}')
+            elif key == ord('6'):
+                auto_mode = 'auto_mapping'
                 print(f'auto_mode={auto_mode}')
 
             elif key == ord('0'):
