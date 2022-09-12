@@ -48,6 +48,8 @@ def main():
     scsnum = 0                  # key (space)
     mapnum = 0                  # key (x)
 
+    map_area = 'big_table'
+
     #speed
     distance = 30
     #旋回角度
@@ -90,7 +92,7 @@ def main():
                 # (interval) 秒おきに画像を習得する
                 current_time = time.time()
                 if current_time - pr_time > interval:
-                    cv2.imwrite(img_path + 'map_img/tello' + str(imgnum) + ".jpg", small_image)
+                    cv2.imwrite(img_path + 'map_img/tello' + str(imgnum) + ".jpg", image)
                     pr_time = current_time
                     imgnum += 1
 
@@ -169,11 +171,35 @@ def main():
                 cv2.imwrite(img_path + 'screen_shot/tello' + str(scsnum) + ".jpg", small_image)
                 print('== Took a screenshot ==')
                 scsnum += 1
-            elif key == ord('x'):                 #スペースキーでスクリーンショット
-                cv2.imwrite(img_path + 'map_shot/tello' + str(scsnum) + ".jpg", image)
+            elif key == ord('n'):                 #nキーでスクリーンショット
+                cv2.imwrite(img_path + 'map_shot/' + map_area +'/tello' + str(scsnum) + ".jpg", image)
                 print('== Took a MapShot ==')
                 scsnum += 1
-            elif key == ord('g'):           # 移動距離を20->30->100とボタンを押すごとに変更(デフォルトは30)
+            elif key == ord('m'):                 #キーを押すごとにファイル保存場所を変更
+                if map_area == 'big_table':
+                    map_area = 'window_table'
+
+                elif map_area == 'window_table':
+                    map_area = 'entrance_table'
+
+                elif map_area == 'entrance_table':
+                    map_area = 'koshitu_1'
+
+                elif map_area == 'koshitu_1':
+                    map_area = 'koshitu_2'
+
+                elif map_area == 'koshitu_2':
+                    map_area = 'souko'
+
+                elif map_area == 'souko':
+                    map_area = 'DAA'
+
+                elif map_area == 'DAA':
+                    map_area = 'big_table'
+
+                print(f'== Save file -> {map_area} ==')
+
+            elif key == ord('g'):                # 移動距離を20->30->100とボタンを押すごとに変更(デフォルトは30)
                 if distance == 20:
                     #画像取得のインターバルを速度に応じて変更
                     interval = 1
@@ -196,6 +222,12 @@ def main():
                     degree = 10
                 print(f'degree={degree}')
             elif key == ord('b'):           # 昇降距離を30->50とボタンを押すごとに変更(デフォルトは30)
+                if lift == 30:
+                    lift = 50
+                elif lift == 50:
+                    lift = 30
+                print(f'lift={lift}')
+            elif key == ord('b'):           # 撮影場所をボタンを押すごとに変更
                 if lift == 30:
                     lift = 50
                 elif lift == 50:
