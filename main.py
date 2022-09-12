@@ -44,8 +44,9 @@ def main():
 
     #画像保存のためのパラメータ
     interval = 1.0              #撮影頻度
-    imgnum = 0
-    scsnum = 0
+    imgnum = 0                  # auto_mode = 'mapping'
+    scsnum = 0                  # key (space)
+    mapnum = 0                  # key (x)
 
     #speed
     distance = 30
@@ -96,6 +97,7 @@ def main():
             #自動移動マッピング
             elif auto_mode == 'auto_mapping':
                 take_Ushape(tello)
+                result_image = small_image
 
             #ライントレース
             elif auto_mode == 'linetrace':
@@ -166,6 +168,10 @@ def main():
             elif key == 32:                 #スペースキーでスクリーンショット
                 cv2.imwrite(img_path + 'screen_shot/tello' + str(scsnum) + ".jpg", small_image)
                 print('== Took a screenshot ==')
+                scsnum += 1
+            elif key == ord('x'):                 #スペースキーでスクリーンショット
+                cv2.imwrite(img_path + 'map_shot/tello' + str(scsnum) + ".jpg", image)
+                print('== Took a MapShot ==')
                 scsnum += 1
             elif key == ord('g'):           # 移動距離を20->30->100とボタンを押すごとに変更(デフォルトは30)
                 if distance == 20:

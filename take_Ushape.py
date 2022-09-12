@@ -30,6 +30,7 @@ def take_rightliner(tello,dist=240,interval=20):
     while n_dist < dist:
         # 移動
         tello.move_right(interval)
+        #time.sleep(3)
         # 撮影
         image = frame_read.frame
         cv2.imwrite(save_path+'tello'+str(imgnum)+".jpg", image)
@@ -59,7 +60,9 @@ def take_rotate_counter(tello,radius=115,angle_t=180,angle_e=10):
     while angle_n < angle_t :
         # 移動
         tello.rotate_counter_clockwise(angle_e)
+        #time.sleep(3)
         tello.move_right(dist_move)
+        #time.sleep(3)
         # 撮影
         image = frame_read.frame
         cv2.imwrite(save_path+'tello'+str(imgnum)+".jpg", image)
