@@ -173,7 +173,7 @@ def main():
                 scsnum += 1
             elif key == ord('n'):                 #nキーでスクリーンショット
                 cv2.imwrite(img_path + 'map_shot/' + map_area +'/tello' + str(scsnum) + ".jpg", image)
-                print('== Took a MapShot ==')
+                print(f'== Took a MapShot ({map_area}) ==')
                 scsnum += 1
             elif key == ord('m'):                 #キーを押すごとにファイル保存場所を変更
                 if map_area == 'big_table':
@@ -222,12 +222,6 @@ def main():
                     degree = 10
                 print(f'degree={degree}')
             elif key == ord('b'):           # 昇降距離を30->50とボタンを押すごとに変更(デフォルトは30)
-                if lift == 30:
-                    lift = 50
-                elif lift == 50:
-                    lift = 30
-                print(f'lift={lift}')
-            elif key == ord('b'):           # 撮影場所をボタンを押すごとに変更
                 if lift == 30:
                     lift = 50
                 elif lift == 50:
