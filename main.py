@@ -81,7 +81,7 @@ def main():
 
             #窓侵入
             if auto_mode == 'window':
-                result_image, auto_mode = window(small_image, auto_mode, color_code)
+                result_image, auto_mode = window(small_image, auto_mode, 'WG')
                 if auto_mode == 'room':
                     auto_mode = 'manual'
                     print(f'auto_mode = {auto_mode}')
@@ -131,8 +131,10 @@ def main():
                 break
             elif key == ord('t'):           # 離陸
                 tello.takeoff()
+                interval = 1.0
             elif key == ord('l'):           # 着陸
                 tello.send_rc_control( 0, 0, 0, 0 )
+                interval = 10000
                 tello.land()
             elif key == ord('w'):           # 前進 30cm
                 tello.move_forward(distance)
@@ -175,7 +177,7 @@ def main():
                 cv2.imwrite(img_path + 'map_shot/' + map_area +'/tello' + str(scsnum) + ".jpg", image)
                 print(f'== Took a MapShot ({map_area}) ==')
                 scsnum += 1
-            elif key == ord('m'):                 #キーを押すごとにファイル保存場所を変更
+            elif key == ord('j'):                 #キーを押すごとにファイル保存場所を変更
                 if map_area == 'big_table':
                     map_area = 'window_table'
 
@@ -202,15 +204,15 @@ def main():
             elif key == ord('g'):                # 移動距離を20->30->100とボタンを押すごとに変更(デフォルトは30)
                 if distance == 20:
                     #画像取得のインターバルを速度に応じて変更
-                    interval = 1
+                    #interval = 1
                     distance = 30
                 elif distance == 30:
                     #画像取得のインターバルを速度に応じて変更
-                    interval = 0.3
+                    #interval = 0.3
                     distance = 100
                 elif distance == 100:
                     #画像取得のインターバルを速度に応じて変更
-                    interval = 1.2
+                    #interval = 1.2
                     distance = 20
                 print(f'distance={distance}, interval={interval}')
             elif key == ord('v'):           # 旋回角度を10->30->90とボタンを押すごとに変更(デフォルトは30)
@@ -241,9 +243,12 @@ def main():
             #自律モード
             elif key == ord('1'):
                 tello.takeoff()
-                time.sleep(5)     # 映像が切り替わるまで少し待つ
-                tello.move_forward(100)
-                #auto_mode = 'window'
+                time.sleep(5)
+                # tello.move_forward(100)
+                # time.sleep(3)
+                #tello.move_right(100)
+                #time.sleep(5)
+                auto_mode = 'window'
             elif key == ord('2'):
                 auto_mode = 'window'
                 print(f'auto_mode={auto_mode}')
@@ -259,6 +264,13 @@ def main():
             elif key == ord('6'):
                 auto_mode = 'auto_mapping'
                 print(f'auto_mode={auto_mode}')
+            elif key == ord('7'):
+                tello.takeoff()
+                time.sleep(5)
+                tello.move_forward(100)
+                time.sleep(3)
+                # tello.move_right(100)
+                # time.sleep(5)
 
             elif key == ord('0'):
                 tello.send_rc_control( 0, 0, 0, 0 )
